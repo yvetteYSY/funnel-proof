@@ -1,0 +1,31 @@
+{
+  "$schema": "https://funnelproof.dev/contracts/tracking-plan/v1",
+  "id": "b2b_saas_trial_to_paid",
+  "version": "1.0.0",
+  "privacy_mode": "default_deny",
+  "primitives": {
+    "vpv": {
+      "collection": "first_party_beacon",
+      "required_properties": ["page_path"],
+      "prohibited_properties": ["query_string", "fragment", "referrer", "page_title", "dom_content"]
+    },
+    "click": {
+      "required_properties": ["ui_name"],
+      "breakdown_properties": ["ui_name", "ui_type", "ui_surface"]
+    }
+  },
+  "funnel": {
+    "id": "trial_to_paid",
+    "version": "1.0.0",
+    "steps": [
+      { "event_name": "signup_completed" },
+      { "event_name": "activation_completed" },
+      { "event_name": "subscription_started" }
+    ]
+  },
+  "property_policy": {
+    "prohibited_key_fragments": ["email", "password", "token", "secret", "card", "address", "content", "query"],
+    "free_form_text": false,
+    "arbitrary_json": false
+  }
+}

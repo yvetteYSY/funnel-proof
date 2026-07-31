@@ -1,0 +1,78 @@
+package dev.funnelproof.collector;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.Executors;
+
+/** Local-only collector. It binds to loopback and never logs request bodies. */
+public final class CollectorApplication {
+    private static final int MAX_BODY_BYTES = 64 * 1024;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private CollectorApplication() {
+    }
+
+    public static void main(String[] args) throws IOException {
+        int port = Integer.parseInt(System.getenv().getOrDefault("FUNNEL_PROOF_PORT", "8080"));
+        EventValidator validator = new EventValidator();
+        EventStore store = new InMemoryEventStore();
+        HttpServer server = createServer(port, validator, store);
+        server.start();
+        System.out.printf("FunnelProof collector listening on http://127.0.0.1:%d/fp/collect%n", port);
+    }
+
+    static HttpServer createServer(int port, EventValidator validator, EventStore store) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        server.createContext("/fp/collect", exchange -> handleCollect(exchange, validator, store));
+        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+        return server;
+    }
+
+    private static void handleCollect(HttpExchange exchange, EventValidator validator, EventStore store) throws IOException {
+        if (!"POST".equals(exchange.getRequestMethod())) {
+            respond(exchange, 405, Map.of("accepted", false, "reason", "method_not_allowed"));
+            return;
+        }
+        String workspaceKey = exchange.getRequestHeaders().getFirst("x-funnel-proof-workspace-key");
+        if (workspaceKey == null || workspaceKey.length() < 8) {
+            respond(exchange, 401, Map.of("accepted", false, "reason", "invalid_workspace_key"));
+            return;
+        }
+
+        byte[] body = exchange.getRequestBody().readNBytes(MAX_BODY_BYTES + 1);
+        if (body.length > MAX_BODY_BYTES) {
+            respond(exchange, 413, Map.of("accepted", false, "reason", "payload_too_large"));
+            return;
+        }
+
+        try {
+            JsonNode candidate = MAPPER.readTree(body);
+            ValidationResult result = validator.validate(candidate, Instant.now());
+            if (!result.accepted()) {
+                respond(exchange, 422, Map.of("accepted", false, "reason", result.reasonCode()));
+                return;
+            }
+            store.append(result.event());
+            respond(exchange, 202, Map.of("accepted", true, "event_id", result.event().path("event_id").asText()));
+        } catch (JsonProcessingException exception) {
+            respond(exchange, 400, Map.of("accepted", false, "reason", "invalid_json"));
+        }
+    }
+
+    private static void respond(HttpExchange exchange, int status, Map<String, Object> body) throws IOException {
+        byte[] response = MAPPER.writeValueAsBytes(body);
+        exchange.getResponseHeaders().set("content-type", "application/json");
+        exchange.sendResponseHeaders(status, response.length);
+        exchange.getResponseBody().write(response);
+        exchange.close();
+    }
+}

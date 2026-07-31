@@ -1,0 +1,14 @@
+.DS_Store
+node_modules/
+.npm-cache/
+.m2/
+dist/
+coverage/
+target/
+.idea/
+.vscode/
+*.log
+*.sqlite
+.env
+.env.*
+!.env.example
