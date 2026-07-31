@@ -1,6 +1,6 @@
 # Local SaaS demo
 
-The demo is a synthetic walkthrough of the V1 trial-to-paid funnel. It sends no customer data and cannot emit an event until its local consent checkbox is selected.
+The demo is a synthetic walkthrough of the V1 trial-to-paid funnel. It sends no customer data and cannot emit an event until its local consent checkbox is selected. Its **Refresh local funnel** button displays the collector's workspace-scoped provisional funnel, freshness status, and deterministic commentary; it does not call an AI service.
 
 With Node.js, Java, and Maven installed:
 
@@ -15,4 +15,4 @@ npm install
 npm run demo
 ```
 
-Open the local Vite URL, consent, then click the three synthetic funnel actions. The Vite proxy forwards `/fp/collect` to the loopback-only collector.
+Open the local Vite URL, consent, then click the three synthetic funnel actions. The Vite proxy forwards `/fp/collect` and `/fp/insights/funnel` to the loopback-only collector.

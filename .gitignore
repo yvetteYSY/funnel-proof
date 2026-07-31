@@ -9,6 +9,7 @@ target/
 .vscode/
 *.log
 *.sqlite
+.funnel-proof/
 .env
 .env.*
 !.env.example
