@@ -9,8 +9,10 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 
 /** Local-only collector. It binds to loopback and never logs request bodies. */
@@ -24,29 +26,40 @@ public final class CollectorApplication {
     public static void main(String[] args) throws IOException {
         int port = Integer.parseInt(System.getenv().getOrDefault("FUNNEL_PROOF_PORT", "8080"));
         EventValidator validator = new EventValidator();
-        EventStore store = new InMemoryEventStore();
-        HttpServer server = createServer(port, validator, store);
+        Path dataDirectory = Path.of(System.getenv().getOrDefault("FUNNEL_PROOF_DATA_DIR", ".funnel-proof/events"));
+        EventStore store = new FileEventStore(dataDirectory);
+        WorkspaceKeyResolver workspaceKeys = WorkspaceKeyResolver.localFromEnvironment();
+        HttpServer server = createServer(port, validator, store, workspaceKeys);
         server.start();
         System.out.printf("FunnelProof collector listening on http://127.0.0.1:%d/fp/collect%n", port);
+        System.out.printf("Local funnel report: http://127.0.0.1:%d/fp/insights/funnel%n", port);
     }
 
-    static HttpServer createServer(int port, EventValidator validator, EventStore store) throws IOException {
+    static HttpServer createServer(
+            int port,
+            EventValidator validator,
+            EventStore store,
+            WorkspaceKeyResolver workspaceKeys
+    ) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
-        server.createContext("/fp/collect", exchange -> handleCollect(exchange, validator, store));
+        server.createContext("/fp/collect", exchange -> handleCollect(exchange, validator, store, workspaceKeys));
+        server.createContext("/fp/insights/funnel", exchange -> handleFunnelInsights(exchange, store, workspaceKeys));
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         return server;
     }
 
-    private static void handleCollect(HttpExchange exchange, EventValidator validator, EventStore store) throws IOException {
+    private static void handleCollect(
+            HttpExchange exchange,
+            EventValidator validator,
+            EventStore store,
+            WorkspaceKeyResolver workspaceKeys
+    ) throws IOException {
         if (!"POST".equals(exchange.getRequestMethod())) {
             respond(exchange, 405, Map.of("accepted", false, "reason", "method_not_allowed"));
             return;
         }
-        String workspaceKey = exchange.getRequestHeaders().getFirst("x-funnel-proof-workspace-key");
-        if (workspaceKey == null || workspaceKey.length() < 8) {
-            respond(exchange, 401, Map.of("accepted", false, "reason", "invalid_workspace_key"));
-            return;
-        }
+        Optional<String> workspaceId = authorize(exchange, workspaceKeys);
+        if (workspaceId.isEmpty()) return;
 
         byte[] body = exchange.getRequestBody().readNBytes(MAX_BODY_BYTES + 1);
         if (body.length > MAX_BODY_BYTES) {
@@ -61,16 +74,59 @@ public final class CollectorApplication {
                 respond(exchange, 422, Map.of("accepted", false, "reason", result.reasonCode()));
                 return;
             }
-            store.append(result.event());
-            respond(exchange, 202, Map.of("accepted", true, "event_id", result.event().path("event_id").asText()));
+            StoreAppendResult appendResult = store.append(workspaceId.get(), result.event());
+            respond(exchange, 202, Map.of(
+                    "accepted", true,
+                    "event_id", result.event().path("event_id").asText(),
+                    "duplicate", !appendResult.persisted()
+            ));
         } catch (JsonProcessingException exception) {
             respond(exchange, 400, Map.of("accepted", false, "reason", "invalid_json"));
+        } catch (IOException exception) {
+            respond(exchange, 503, Map.of("accepted", false, "reason", "storage_unavailable"));
         }
     }
 
+    private static void handleFunnelInsights(
+            HttpExchange exchange,
+            EventStore store,
+            WorkspaceKeyResolver workspaceKeys
+    ) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            respond(exchange, 405, Map.of("accepted", false, "reason", "method_not_allowed"));
+            return;
+        }
+        Optional<String> workspaceId = authorize(exchange, workspaceKeys);
+        if (workspaceId.isEmpty()) return;
+
+        try {
+            var report = new FunnelReportService().buildReport(store.snapshot(workspaceId.get()), Instant.now());
+            respond(exchange, 200, report);
+        } catch (IOException exception) {
+            respond(exchange, 503, Map.of("accepted", false, "reason", "storage_unavailable"));
+        }
+    }
+
+    private static Optional<String> authorize(HttpExchange exchange, WorkspaceKeyResolver workspaceKeys) throws IOException {
+        String workspaceKey = exchange.getRequestHeaders().getFirst("x-funnel-proof-workspace-key");
+        if (workspaceKey == null || workspaceKey.length() < 8) {
+            respond(exchange, 401, Map.of("accepted", false, "reason", "invalid_workspace_key"));
+            return Optional.empty();
+        }
+        Optional<String> workspaceId = workspaceKeys.resolve(workspaceKey);
+        if (workspaceId.isEmpty()) {
+            respond(exchange, 401, Map.of("accepted", false, "reason", "invalid_workspace_key"));
+        }
+        return workspaceId;
+    }
+
     private static void respond(HttpExchange exchange, int status, Map<String, Object> body) throws IOException {
+        respond(exchange, status, (Object) body);
+    }
+
+    private static void respond(HttpExchange exchange, int status, Object body) throws IOException {
         byte[] response = MAPPER.writeValueAsBytes(body);
-        exchange.getResponseHeaders().set("content-type", "application/json");
+        exchange.getResponseHeaders().set("content-type", "application/json; charset=utf-8");
         exchange.sendResponseHeaders(status, response.length);
         exchange.getResponseBody().write(response);
         exchange.close();

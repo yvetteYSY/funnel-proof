@@ -18,6 +18,12 @@ public final class EventValidator {
     private static final Set<String> EVENT_NAMES = Set.of(
             "vpv", "click", "signup_completed", "activation_completed", "subscription_started"
     );
+    private static final Set<String> ALLOWED_INPUT_FIELDS = Set.of(
+            "event_id", "event_name", "occurred_at", "anonymous_id", "session_id", "user_id",
+            "properties", "context", "schema_version", "tracking_plan_version", "funnel_definition_version", "consent"
+    );
+    private static final Set<String> CONTEXT_FIELDS = Set.of("platform", "sdk_version");
+    private static final Set<String> CONSENT_FIELDS = Set.of("analytics");
     private static final Map<String, Set<String>> ALLOWED_PROPERTIES = Map.of(
             "vpv", Set.of("page_path"),
             "click", Set.of("ui_name", "ui_type", "ui_surface"),
@@ -43,11 +49,14 @@ public final class EventValidator {
     public ValidationResult validate(JsonNode candidate, Instant receivedAt) {
         if (!(candidate instanceof ObjectNode input)) return ValidationResult.rejected("invalid_payload");
 
+        ValidationResult envelopeResult = validateEnvelope(input);
+        if (!envelopeResult.accepted()) return envelopeResult;
         String eventName = text(input, "event_name");
         if (!EVENT_NAMES.contains(eventName)) return ValidationResult.rejected("unsupported_event_name");
         if (!hasPseudonymousId(input, "event_id") || !hasPseudonymousId(input, "anonymous_id") || !hasPseudonymousId(input, "session_id")) {
             return ValidationResult.rejected("invalid_identifier");
         }
+        if (input.has("user_id") && !hasPseudonymousId(input, "user_id")) return ValidationResult.rejected("invalid_identifier");
         if (!hasVersion(input, "schema_version") || !hasVersion(input, "tracking_plan_version") || !hasVersion(input, "funnel_definition_version")) {
             return ValidationResult.rejected("unsupported_contract_version");
         }
@@ -65,6 +74,14 @@ public final class EventValidator {
         accepted.put("received_at", receivedAt.toString());
         accepted.put("event_time_quality", "client_verified");
         return ValidationResult.accepted(accepted);
+    }
+
+    private ValidationResult validateEnvelope(ObjectNode input) {
+        var fields = input.fieldNames();
+        while (fields.hasNext()) {
+            if (!ALLOWED_INPUT_FIELDS.contains(fields.next())) return ValidationResult.rejected("unallowed_envelope_field");
+        }
+        return ValidationResult.accepted(null);
     }
 
     private ValidationResult validateEventTime(ObjectNode input, Instant receivedAt) {
@@ -124,12 +141,26 @@ public final class EventValidator {
 
     private static boolean hasValidConsent(ObjectNode node) {
         JsonNode consent = node.get("consent");
-        return consent != null && consent.isObject() && consent.path("analytics").isBoolean() && consent.path("analytics").booleanValue();
+        if (consent == null || !consent.isObject() || !consent.path("analytics").isBoolean() || !consent.path("analytics").booleanValue()) {
+            return false;
+        }
+        var fields = consent.fieldNames();
+        while (fields.hasNext()) {
+            if (!CONSENT_FIELDS.contains(fields.next())) return false;
+        }
+        return true;
     }
 
     private static boolean hasValidContext(ObjectNode node) {
         JsonNode context = node.get("context");
-        return context != null && context.isObject() && "web".equals(context.path("platform").asText()) && !context.path("sdk_version").asText().isBlank();
+        if (context == null || !context.isObject() || !"web".equals(context.path("platform").asText()) || context.path("sdk_version").asText().isBlank()) {
+            return false;
+        }
+        var fields = context.fieldNames();
+        while (fields.hasNext()) {
+            if (!CONTEXT_FIELDS.contains(fields.next())) return false;
+        }
+        return true;
     }
 
     private static boolean isValidPagePath(String pagePath) {

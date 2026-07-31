@@ -23,6 +23,15 @@
       </section>
 
       <output id="status" aria-live="polite">Consent is required before event collection.</output>
+
+      <section aria-labelledby="report-heading">
+        <h2 id="report-heading">Local funnel insight</h2>
+        <p>This is a provisional report from accepted synthetic events only. It does not use an AI service.</p>
+        <button id="refresh-report" type="button">Refresh local funnel</button>
+        <output id="report-status" aria-live="polite">Start the local collector to load a funnel report.</output>
+        <ol id="report-stages" aria-label="Funnel stages"></ol>
+        <p id="report-commentary"></p>
+      </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

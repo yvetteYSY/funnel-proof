@@ -1,10 +1,15 @@
 import { createTracker } from "../../../packages/web-sdk/src/index.js";
+import { dataHealthSummary, formatConversion, labelForStage, type FunnelReport } from "./funnel-report.js";
 
 const status = requiredElement<HTMLOutputElement>("status");
 const consent = requiredElement<HTMLInputElement>("analytics-consent");
+const reportStatus = requiredElement<HTMLOutputElement>("report-status");
+const reportStages = requiredElement<HTMLOListElement>("report-stages");
+const reportCommentary = requiredElement<HTMLElement>("report-commentary");
+const workspaceKey = "fp_public_local_demo";
 const tracker = createTracker({
   endpoint: "/fp/collect",
-  workspaceKey: "fp_public_local_demo",
+  workspaceKey,
   anonymousId: browserLocalId("fp_demo_anonymous_id"),
   sdkVersion: "0.1.0"
 });
@@ -34,13 +39,43 @@ requiredElement<HTMLButtonElement>("subscription").addEventListener("click", () 
   )
 );
 
+requiredElement<HTMLButtonElement>("refresh-report").addEventListener("click", () => void refreshReport());
+
 async function send(successMessage: string, action: () => Promise<unknown>): Promise<void> {
   try {
     await action();
     status.value = successMessage;
+    await refreshReport();
   } catch (error) {
     status.value = error instanceof Error ? error.message : "Event could not be recorded.";
   }
+}
+
+async function refreshReport(): Promise<void> {
+  reportStatus.value = "Loading local funnel report…";
+  try {
+    const response = await fetch("/fp/insights/funnel", {
+      headers: { "x-funnel-proof-workspace-key": workspaceKey }
+    });
+    if (!response.ok) throw new Error("Collector is unavailable. Start it locally, then refresh this report.");
+    renderReport((await response.json()) as FunnelReport);
+  } catch (error) {
+    reportStatus.value = error instanceof Error ? error.message : "Funnel report could not be loaded.";
+    reportStages.replaceChildren();
+    reportCommentary.textContent = "";
+  }
+}
+
+function renderReport(report: FunnelReport): void {
+  reportStatus.value = dataHealthSummary(report);
+  reportStages.replaceChildren(
+    ...report.stages.map((stage) => {
+      const item = document.createElement("li");
+      item.textContent = `${labelForStage(stage.event_name)}: ${stage.users} users · ${formatConversion(stage.conversion_from_previous)} from prior stage`;
+      return item;
+    })
+  );
+  reportCommentary.textContent = report.commentary.summary;
 }
 
 function browserLocalId(key: string): string {

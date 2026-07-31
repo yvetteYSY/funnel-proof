@@ -1,5 +1,7 @@
 # Tests
 
+Tests evolve with each implementation slice. They cover event contracts, SDK privacy behavior, collector validation and HTTP behavior, local durability/idempotency, ordered funnel results, and data-SLA commentary suppression.
+
 Tests live at the repository level so contract, SDK, collector, and end-to-end behavior can evolve together.
 
 - `contracts/` contains valid and invalid wire fixtures.

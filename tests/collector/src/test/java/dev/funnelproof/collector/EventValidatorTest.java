@@ -80,4 +80,27 @@ class EventValidatorTest {
         assertFalse(result.accepted());
         assertEquals("invalid_page_path", result.reasonCode());
     }
+
+    @Test
+    void rejectsUnknownTopLevelFieldsBeforeTheyCanReachDurableStorage() throws Exception {
+        ValidationResult result = validator.validate(MAPPER.readTree("""
+                {
+                  "event_id":"018f4f70-8ab1-7cc4-a67d-fae57c0c0f50",
+                  "event_name":"signup_completed",
+                  "occurred_at":"2026-07-30T18:45:00.123Z",
+                  "anonymous_id":"018f4f70-8ab1-7cc4-a67d-fae57c0c0f51",
+                  "session_id":"018f4f70-8ab1-7cc4-a67d-fae57c0c0f52",
+                  "email":"person@example.com",
+                  "properties":{"signup_method":"github"},
+                  "context":{"platform":"web","sdk_version":"0.1.0"},
+                  "schema_version":"1.0.0",
+                  "tracking_plan_version":"1.0.0",
+                  "funnel_definition_version":"1.0.0",
+                  "consent":{"analytics":true}
+                }
+                """), RECEIVED_AT);
+
+        assertFalse(result.accepted());
+        assertEquals("unallowed_envelope_field", result.reasonCode());
+    }
 }
