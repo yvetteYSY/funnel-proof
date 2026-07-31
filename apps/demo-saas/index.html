@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FunnelProof local SaaS demo</title>
+  </head>
+  <body>
+    <main>
+      <h1>FunnelProof local SaaS demo</h1>
+      <p>This demo emits only synthetic, privacy-filtered funnel events to a local collector.</p>
+
+      <label>
+        <input id="analytics-consent" type="checkbox" />
+        I consent to local analytics for this demo.
+      </label>
+
+      <section aria-label="Synthetic funnel actions">
+        <h2>Trial-to-paid funnel</h2>
+        <button id="signup" type="button">Complete synthetic signup</button>
+        <button id="activation" type="button">Create first project</button>
+        <button id="subscription" type="button">Start synthetic subscription</button>
+      </section>
+
+      <output id="status" aria-live="polite">Consent is required before event collection.</output>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

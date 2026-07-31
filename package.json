@@ -1,0 +1,28 @@
+{
+  "name": "funnel-proof",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Privacy-first, verified trial-to-paid funnel analytics for B2B SaaS.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit --project packages/web-sdk/tsconfig.json",
+    "typecheck:demo": "tsc --noEmit --project apps/demo-saas/tsconfig.json",
+    "validate:contracts": "node scripts/validate-contracts.mjs",
+    "demo": "vite --config apps/demo-saas/vite.config.ts",
+    "build:demo": "vite build --config apps/demo-saas/vite.config.ts",
+    "verify": "npm run validate:contracts && npm run typecheck && npm run typecheck:demo && npm run build:demo && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^4.1.10"
+  }
+}

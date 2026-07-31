@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://funnelproof.dev/contracts/events/v1/event-envelope.schema.json",
+  "title": "FunnelProof accepted web event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_name",
+    "occurred_at",
+    "received_at",
+    "anonymous_id",
+    "session_id",
+    "properties",
+    "context",
+    "schema_version",
+    "tracking_plan_version",
+    "funnel_definition_version",
+    "consent"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 64
+    },
+    "event_name": {
+      "type": "string",
+      "enum": [
+        "vpv",
+        "click",
+        "signup_completed",
+        "activation_completed",
+        "subscription_started"
+      ]
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "anonymous_id": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "user_id": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "properties": {
+      "type": "object"
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "sdk_version"],
+      "properties": {
+        "platform": { "const": "web" },
+        "sdk_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schema_version": { "const": "1.0.0" },
+    "tracking_plan_version": { "const": "1.0.0" },
+    "funnel_definition_version": { "const": "1.0.0" },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["analytics"],
+      "properties": {
+        "analytics": { "const": true }
+      }
+    },
+    "event_time_quality": {
+      "type": "string",
+      "enum": ["client_verified", "server_assigned", "quarantined"]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "event_name": { "const": "vpv" } } },
+      "then": {
+        "properties": {
+          "properties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["page_path"],
+            "properties": {
+              "page_path": { "type": "string", "pattern": "^/[^?#]*$", "maxLength": 512 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_name": { "const": "click" } } },
+      "then": {
+        "properties": {
+          "properties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ui_name"],
+            "properties": {
+              "ui_name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+              "ui_type": { "type": "string", "enum": ["button", "link", "menu_item"] },
+              "ui_surface": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_name": { "const": "signup_completed" } } },
+      "then": {
+        "properties": {
+          "properties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "signup_method": { "type": "string", "enum": ["email", "google", "github", "sso"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_name": { "const": "activation_completed" } } },
+      "then": {
+        "properties": {
+          "properties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["activation_action"],
+            "properties": {
+              "activation_action": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_name": { "const": "subscription_started" } } },
+      "then": {
+        "properties": {
+          "properties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["plan", "billing_interval"],
+            "properties": {
+              "plan": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+              "billing_interval": { "type": "string", "enum": ["monthly", "yearly"] },
+              "acquisition_channel": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

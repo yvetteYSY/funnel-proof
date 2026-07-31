@@ -1,0 +1,12 @@
+{
+  "name": "@funnel-proof/web",
+  "version": "0.1.0",
+  "description": "Privacy-first web event SDK for FunnelProof.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc --project tsconfig.json"
+  }
+}
