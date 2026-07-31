@@ -62,7 +62,7 @@ The category already contains capable open-source and hosted tools for web analy
 
 > **Install three verified business events and know whether your SaaS trial converts to activation and paid subscription.**
 
-The product differentiates through a guided activation-definition interview, generated copy-paste instrumentation, a test journey, and a visible funnel-confidence checklist. The checklist shows whether each required event has been received, is schema-valid, is fresh, and is reconciled with the canonical result. The dashboard starts with one decision—where the trial-to-paid journey breaks—rather than an empty chart builder.
+The product differentiates through a guided activation-definition flow, generated copy-paste instrumentation, a test journey, and a visible funnel-confidence checklist. The checklist shows whether each required event has been received, is schema-valid, is fresh, and is reconciled with the canonical result. The dashboard starts with one decision—where the trial-to-paid journey breaks—rather than an empty chart builder.
 
 ### Explicitly out of scope for V1
 
@@ -105,11 +105,33 @@ funnelProof.track("activation_completed", {
 });
 ```
 
-The developer must add business events at meaningful success points. One Click Data does not infer activation from a click or subscription from a pricing-page visit.
+The developer must add business events at meaningful success points. FunnelProof does not infer activation from a click or subscription from a pricing-page visit.
 
 ## 6. Event contract and B2B SaaS tracking plan
 
-Every accepted event uses a stable, versioned envelope. The event name identifies the business action; properties add only approved business context.
+Every accepted event uses a stable, versioned envelope. The event name identifies the business action; properties add only approved business context. Event names are lowercase `snake_case`, concise, past-tense business facts where possible, and never encode a UI component or a changing product detail.
+
+### 6.1 Event primitives
+
+| Primitive | Definition | Required fields beyond the common envelope | Use in a funnel |
+|---|---|---|---|
+| `vpv` | A **virtual page view** emitted through a first-party 1×1 pixel/beacon (`1Pxl`) or equivalent first-party SDK request when a route becomes viewable | `page_path` after query/fragment removal; `occurred_at`; `session_id` | Baseline acquisition and route-level context, not proof of business value |
+| `click` | A user interaction with a registered UI component | `ui_name`; optional `ui_type`, `ui_surface` | Optional diagnostic or entry step; never substitute for a completed business outcome |
+| `signup_completed` | Account creation completed successfully | Optional non-sensitive `signup_method` | Core V1 funnel step |
+| `activation_completed` | The user completed the workspace's declared first-value action | `activation_action` from the registered activation catalog | Core V1 funnel step |
+| `subscription_started` | A paid subscription successfully started | `plan`, `billing_interval` | Core V1 funnel step |
+
+`vpv` is deliberately small. Its client timestamp is required in UTC with millisecond precision and must represent when the route became viewable, not when a batch flush occurred. The collector always adds authoritative `received_at` in UTC. If `occurred_at` is missing, malformed, implausibly far from `received_at`, or in the future beyond the permitted clock-skew window, the event is quarantined or assigned server time with an explicit `event_time_quality` flag; it is never silently treated as a clean client-time event.
+
+`vpv` uses a first-party collection endpoint so the customer controls the domain under which the browser request is made. It stores a normalized route only: no URL query string, fragment, full referrer, page title, DOM content, or user-entered text. Tenant identity is derived from the workspace key and is not supplied as an untrusted client property.
+
+### 6.2 Component filtering, not component-specific event names
+
+`click` is a reusable primitive. Its `ui_name` is a registered, stable semantic identifier such as `pricing_cta`, `nav_signup`, or `create_project_button`; it is not visible button text and must not contain user input. The optional `ui_surface` identifies the route or product area, and `ui_type` identifies a stable component class such as `button` or `link`.
+
+Funnel definitions express component-level breakdowns as predicates over the primitive. For example, “pricing CTA click” means `event_name = 'click' AND properties.ui_name = 'pricing_cta'`, not a separate `pricing_cta_clicked` event. This prevents event-name proliferation, makes UI variants filterable downstream, and keeps the core vocabulary intuitive. A conversion step still uses `signup_completed`, `activation_completed`, or `subscription_started`; a click alone cannot claim a conversion.
+
+### 6.3 Common envelope
 
 ```json
 {
@@ -137,20 +159,28 @@ Every accepted event uses a stable, versioned envelope. The event name identifie
 }
 ```
 
-Reserved fields are controlled by the platform. Tenant-defined properties are approved through an event schema registry. The SaaS tracking plan declares its required stages, optional dimensions, and forbidden fields. It may allow `plan`, `billing_interval`, and `acquisition_channel`, but never an email address, payment identifier, access token, free-form text, or customer content.
+Reserved fields are controlled by the platform. Tenant-defined properties are approved through an event schema registry. The SaaS tracking plan declares its required stages, optional dimensions, and forbidden fields. It may allow `plan`, `billing_interval`, `acquisition_channel`, and registered UI metadata, but never an email address, payment identifier, access token, free-form text, customer content, URL query parameter, or DOM-derived value.
 
-Schema evolution uses additive changes when possible. Breaking changes create a new event or schema version and require an explicit migration in the control plane.
+### 6.4 Compatibility and historical replay
+
+The event envelope carries a required `schema_version`, `tracking_plan_version`, and `funnel_definition_version`. Additive optional fields are backward compatible. A field's type and meaning are immutable once published: a breaking change creates a new field, event, or version instead of reusing an existing name with a new meaning.
+
+Readers are tolerant of unknown additive fields. Silver normalization includes versioned upcasters that convert prior compatible schema versions into the current typed representation, preserving the source version and transformation version for audit. Contract tests run in CI against current and prior fixture events before an SDK, collector, or transformation change can ship.
+
+Canonical backfills always rebuild from immutable, privacy-filtered Bronze events with the relevant tracking-plan and funnel-definition versions. If a development/demo environment has no real history, it may generate a clearly labeled synthetic time series with trend, seasonality, and controlled anomalies. Synthetic rows carry `is_synthetic = true`, never mix with customer data, and never drive customer-facing recommendations.
 
 ## 7. Functional requirements
 
 | Area | Requirement |
 |---|---|
-| Collection | Send page views automatically after consent and collect named business events through `track()` |
+| Collection | Send a minimal first-party `vpv` only after consent and collect named business events through `track()` |
 | Identity | Support anonymous browsing, optional pseudonymous user identity, session identity, and post-login identity stitching |
 | Funnel definitions | Provide the versioned SaaS trial-to-paid funnel; allow an owner to label activation and technical users to extend it safely |
-| Reporting | Show counts, conversion rate, median time to next stage, source breakdown, seven-day return engagement, and confidence status |
-| Validation | Reject invalid event names, invalid property types, missing required fields, expired workspace keys, and disallowed properties |
-| Data freshness | Surface ordinary events in the near-real-time view within five minutes; publish durable batch reporting on an hourly cadence |
+| Reporting | Show counts, conversion rate, median time to next stage, source breakdown, seven-day return engagement, confidence status, and a plain-language insight summary |
+| Validation | Reject invalid event names, invalid property types, missing required fields, invalid event time, expired workspace keys, and disallowed properties |
+| Compatibility | Preserve event, tracking-plan, and funnel-definition versions; support deterministic historical backfills from Bronze |
+| Anomaly detection | Detect both business-metric changes and instrumentation/data-quality failures; never label an insight trustworthy when its input data is unhealthy |
+| Data freshness | Surface ordinary events in the near-real-time view within five minutes; publish durable batch reporting on an hourly cadence and expose SLA status at every layer |
 | Export | Export selected events and aggregates as CSV or Parquet through a documented API |
 | Privacy controls | Enforce consent, data minimization, retention, access control, export, and deletion workflows |
 | Reliability | Allow safe retry from clients and safe replay from Kafka without double-counting metrics |
@@ -173,22 +203,24 @@ flowchart LR
   Flink --> MPP
   Airflow["Apache Airflow"] --> Spark
   Airflow --> Lake
-  MPP --> Dashboard["Owner dashboard and export API"]
+  MPP --> Insight["Insight and anomaly service\nconfidence-aware commentary"]
+  Insight --> Dashboard["Founder dashboard and export API"]
+  MPP --> Dashboard
 ```
 
 ### 8.1 Control plane
 
-The control plane is a Java service backed by PostgreSQL. It owns workspaces, user roles, API keys, the B2B SaaS tracking plan, consent policy, event schemas, funnel versions, retention settings, and data-subject requests. It is authoritative for tenant configuration; event processors receive a versioned, cached projection of the configuration.
+The control plane is a Java service backed by PostgreSQL. It owns workspaces, user roles, API keys, the B2B SaaS tracking plan, consent policy, event schemas, funnel versions, retention settings, data-service objectives, and data-subject requests. It is authoritative for tenant configuration; event processors receive a versioned, cached projection of the configuration.
 
 ### 8.2 Web SDK
 
 The public TypeScript SDK is small, versioned, and framework-neutral. It queues events while the page is active, batches requests, retries with bounded backoff, and attaches the current consent and schema version. It generates a UUID/ULID-style `event_id` client-side so retries do not create new logical events.
 
-The SDK sends no analytics event before consent when the workspace is configured to require it. It never records keystrokes, form values, page DOM, full query strings, passwords, payment data, or session replay by default.
+The SDK sends no analytics event before consent when the workspace is configured to require it. It never records keystrokes, form values, page DOM, full query strings, fragments, raw referrers, passwords, payment data, user-generated content, or session replay by default. It does not inspect the DOM to infer clicks; developers explicitly register a stable `ui_name` when a `click` primitive is useful.
 
 ### 8.3 Collector and ingestion API
 
-The Java collector is stateless and horizontally scalable on Kubernetes. It authenticates the workspace key, enforces per-tenant rate limits, applies the latest schema and privacy policy, removes prohibited fields, assigns `received_at`, and writes only accepted events to Kafka.
+The Java collector is stateless and horizontally scalable on Kubernetes. It authenticates the workspace key, enforces per-tenant rate limits, applies the latest schema and privacy policy, validates event time, rejects prohibited fields, assigns `received_at`, and writes only accepted events to Kafka. No pre-filtered event payload is persisted for debugging.
 
 Requests receive a bounded acknowledgement after Kafka accepts the record. Invalid events return an actionable error for development mode; production clients receive a safe response while a sanitized reason is recorded for the workspace's event-quality page.
 
@@ -210,7 +242,7 @@ S3 is the production object store. MinIO provides a compatible local-development
 
 | Layer | Contents | Purpose |
 |---|---|---|
-| Bronze | Accepted, privacy-filtered immutable events | Replay, audit, and reproducibility |
+| Bronze | Accepted, privacy-filtered immutable events with source versions | Replay, audit, reproducibility, and deterministic backfills |
 | Silver | Typed events, identities, sessions, and validated dimensions | Reusable analytical source tables |
 | Gold | Funnel stages, conversion, retention, and business aggregates | Canonical business metrics |
 
@@ -234,7 +266,15 @@ ClickHouse is the MPP analytical serving database. It exposes precomputed funnel
 
 The dashboard compares provisional streaming counts with the last canonical batch result internally; the canonical result is the source for exported reports and billing-sensitive metrics.
 
-### 8.10 Development execution boundary
+### 8.10 Insight and anomaly service
+
+The dashboard does not stop at charts. It translates the canonical funnel into a short decision-oriented view: what changed, where it changed, the comparison window, data confidence, and the next diagnostic to check. The first implementation is deterministic commentary over approved aggregates; for example, “activation conversion is 18% below its four-week weekday baseline, while signup volume and data freshness are healthy.”
+
+Anomaly detection starts with robust, explainable baselines: a rolling history segmented by weekday where enough history exists, median and median absolute deviation rather than a fragile mean alone, minimum-volume thresholds, and separate checks for event volume, stage conversion, and pipeline freshness. The service distinguishes likely business anomalies from data anomalies. A sudden fall in `activation_completed` alongside an ingestion-SLA breach is an instrumentation/data incident, not a product-conversion conclusion.
+
+AI-generated commentary is optional and may only consume tenant-isolated aggregate metrics, approved definitions, confidence status, and anomaly evidence—never raw events, identifiers, or sensitive properties. It must cite the time window and metric behind each statement, avoid causal claims it cannot prove, and be suppressed whenever a required data SLA is unhealthy. The local zero-cost profile uses deterministic commentary only; it does not call a paid model API.
+
+### 8.11 Development execution boundary
 
 The architecture above is a target design, **not** an instruction to provision cloud infrastructure. During development, FunnelProof runs locally against synthetic data. S3 is represented by MinIO; Kafka, Flink, Spark, Airflow, PostgreSQL, and ClickHouse are optional local containers, not managed services. Kubernetes is a design and later local-learning concern, not a V1 deployment requirement.
 
@@ -246,13 +286,29 @@ End-to-end “exactly once” is not assumed. Browser networks retry, Kafka can 
 
 ### Data quality
 
-Data quality is evaluated at three boundaries:
+Data quality is enforced, not merely observed, at three boundaries:
 
 1. The SDK validates developer-facing event calls where possible.
 2. The collector enforces schema and privacy policy before durable storage.
 3. Spark validates volume, freshness, null rates, stage ordering, duplicates, and reconciliation between Bronze, Silver, and Gold.
 
-Every rejected event is attributable to a workspace and a safe reason code. No sensitive rejected payload is stored solely for debugging.
+Every rejected or quarantined event is attributable to a workspace and a safe reason code. No sensitive rejected payload is stored solely for debugging. A failed quality gate blocks publication of the affected canonical Gold partition rather than publishing a number known to be incomplete.
+
+### Data SLA enforcement at every layer
+
+The product exposes a per-workspace data-health status, not a single opaque uptime number. A metric is considered **trusted** only when the required layers are healthy for its time window. Initial objectives are below; local development measures the same contracts without claiming an external availability guarantee.
+
+| Layer | Contract / initial objective | Enforcement when unhealthy |
+|---|---|---|
+| SDK / `1Pxl` | No analytics emission before required consent; required envelope fields and valid client event time before enqueue | Block invalid local events, surface developer error in test mode, and record a privacy-safe counter |
+| Collector | Valid event is schema/privacy checked and durably acknowledged or rejected with a reason; `received_at` is always assigned | Reject or quarantine before Kafka; rate-limit abuse; alert on reject-rate or acknowledgement-latency breach |
+| Kafka | Accepted event is available to consumers in order within its partition; consumer lag remains under the live-view budget | Alert on lag/under-replication; pause confidence publication rather than present stale live data as current |
+| Flink / Iceberg Bronze | Accepted event reaches a committed raw snapshot and provisional aggregate within five minutes at P95 | Restore from checkpoint, replay offsets, and mark live metrics delayed until catch-up completes |
+| Spark / Airflow Gold | Hourly canonical funnel completes with all quality gates and a visible data-through timestamp | Retry idempotent partition; retain prior canonical snapshot; mark the affected window stale and suppress insight claims |
+| ClickHouse / dashboard | Dashboard serves the identified canonical snapshot and shows its freshness in every funnel view | Roll back to last healthy snapshot; display stale status rather than a partially published result |
+| Insight / anomaly service | Commentary and alerts use healthy, sufficient-volume aggregate inputs and name their comparison window | Suppress commentary/alerts or label them data-quality incidents when confidence prerequisites fail |
+
+SLA rules are versioned data contracts. Airflow evaluates them after each materialization; the control plane stores the result, and the dashboard displays it. Alerts are routed first as an operational data incident—collection, freshness, or quality—before any product-conversion interpretation is made.
 
 ### Observability
 
@@ -266,16 +322,16 @@ The hosted system runs on Kubernetes with separate autoscaling policies for coll
 
 ## 10. Privacy and security guardrails
 
-Privacy controls apply before data lands in the lake.
+Privacy controls apply before data lands in the lake. A first-party endpoint improves domain control and resilience; it does **not** remove the need for consent or a lawful collection policy.
 
-- Consent state is checked in the SDK and enforced again at ingestion.
-- Allowlisted schemas reject unexpected personal data; free-form text properties are disabled by default.
-- Analytics identifiers are pseudonymous. Any identity mapping is access-restricted and separated from funnel aggregates.
-- Data is encrypted in transit and at rest. Tenant access uses role-based authorization and audit logs.
-- Tenant data is logically isolated in all serving queries and storage access policies.
-- Configurable retention removes raw events on schedule; aggregate retention follows a documented policy.
-- Deletion requests create a durable request record, remove or anonymize matching identity-linked records, rebuild affected Gold partitions, and preserve only compliance-safe audit evidence.
-- A customer can export its events and aggregates in documented formats.
+- **Default deny event contract:** every field is classified before publication. Only allowlisted low-sensitivity fields are accepted; free-form text, arbitrary JSON, customer content, URL query parameters, DOM-derived values, email addresses, payment identifiers, and secrets are rejected.
+- **Data minimization at the edge:** the SDK sends normalized route paths only. The collector discards raw IP address after the minimum security/rate-limit processing needed by policy and does not retain a pre-redaction payload.
+- **Consent twice:** the SDK gates emission, and the collector enforces the workspace consent policy again. Consent withdrawal stops future collection and starts the appropriate deletion/suppression workflow.
+- **Pseudonymous identity:** analytics identifiers are pseudonymous. Identity mappings are encrypted, access-restricted, separated from funnel aggregates, and never exposed through the owner dashboard.
+- **Tenant isolation:** encryption in transit and at rest, role-based access, audit logs, tenant-scoped serving queries, and storage access policies prevent one workspace from reading another's data.
+- **Retention and deletion:** retention is configured by data class. A verified deletion request creates a durable marker, removes applicable identity-linked Bronze/Silver/serving rows, rebuilds affected Gold partitions, and preserves only compliance-safe audit evidence.
+- **Privacy regression tests:** SDK, collector, schema, and export tests include prohibited-field fixtures. A release that emits or accepts a forbidden field fails its quality gate.
+- **Portability:** a customer can export its approved events and aggregates in documented formats without exporting another tenant's data or internal security metadata.
 
 ## 11. Public and self-hosting posture
 
@@ -307,7 +363,7 @@ FunnelProof is developed under a **zero-cost-by-default** rule. No action taken 
 | Profile | What runs | Cost policy |
 |---|---|---|
 | Starter — execute first | Sample SaaS site, TypeScript SDK, Java collector, PostgreSQL or ClickHouse, and synthetic funnel events | Entirely local; no cloud account |
-| Distributed learning — optional | Local Kafka, Flink, Spark, MinIO, and Airflow to demonstrate the target architecture | Entirely local; use only when the starter flow works |
+| Distributed learning — optional | Local Kafka, Flink, Spark, MinIO, and Airflow to exercise the target architecture | Entirely local; use only when the starter flow works |
 | Hosted beta — deferred | Multi-tenant cloud deployment for real external users | Requires a separate written cost plan and explicit approval before any provisioning |
 
 The only practical cost of the first two profiles is use of the developer's existing computer, local disk, and electricity. Every command and setup guide should state which profile it belongs to.
@@ -364,19 +420,19 @@ The most important product metric is not total events ingested. It is the percen
 | Lake storage | Iceberg on S3-compatible storage | Supports evolution, replay, reproducibility, and portability |
 | Serving database | ClickHouse | Fast analytical queries and accessible self-host path |
 | Customer deployment | Hosted by default, lightweight self-host option | Small businesses receive value without operating a data platform |
-| Development cost | Local-first with synthetic data | Builds and demonstrates the product without a cloud bill or credit card |
+| Development cost | Local-first with synthetic data | Builds the product without a cloud bill or credit card |
 | Open posture | Apache-2.0 SDK and public schemas/docs | Builds trust and reduces adoption friction |
 
 ## 16. Open design questions
 
-1. Which founder-described action should the activation interview accept in V1, and how should it map to the canonical event?
+1. Which founder-described action should the guided activation-definition flow accept in V1, and how should it map to the canonical event?
 2. What is the first retention default: 7-day return engagement or a template-specific window after activation?
 3. Which cloud and data-residency region should the hosted beta support first?
 4. Should the first dashboard be read-only for founders, or include a guided activation-step editor from the start?
 5. What free-tier event and retention limits keep evaluation useful without making platform cost unpredictable?
-6. What evidence from the first ten design-partner interviews would justify adding a second industry template?
+6. What evidence from the first ten design-partner conversations would justify adding a second industry template?
 
-## 17. Operational design notes and interview answers
+## 17. Operational design decisions
 
 ### Why Kafka only guarantees ordering within a partition
 
@@ -410,7 +466,7 @@ The resulting promise is **effectively-once business metrics**, not a blanket as
 
 `occurred_at` is **event time**: when the customer action happened on the device. `received_at` is **processing time**: when the platform observed it. They differ because of mobile/offline buffering, browser retries, network delay, queue lag, and recovery replay.
 
-Funnel order and time-to-convert use event time. If checkout happened at 10:00 but reached the collector at 10:08, the business funnel must count it after the preceding 09:59 cart action rather than according to receive order.
+Funnel order and time-to-convert use event time. If activation completed at 10:00 but reached the collector at 10:08, the business funnel must count it after the preceding 09:59 signup rather than according to receive order.
 
 Flink maintains a watermark: a moving assertion that events earlier than a threshold are unlikely to arrive. For example, a watermark based on the maximum observed event time minus a two-hour lateness allowance lets a window wait for ordinary delays without holding state forever. Events earlier than that watermark are late:
 
@@ -460,9 +516,3 @@ The collector/API is stateless. Kubernetes Horizontal Pod Autoscaling can increa
 Kafka/Flink consumers have a different constraint: useful stream parallelism cannot exceed available Kafka partitions. Flink state also must be repartitioned safely. Scaling is performed through the Flink Kubernetes Operator/autoscaler or an explicit savepoint-and-rescale procedure, monitored by lag, checkpoint duration, backpressure, and state size—not ordinary API-style HPA alone.
 
 Spark is batch-oriented and is tuned separately. Each job declares executor CPU, memory, shuffle/storage overhead, and maximum parallelism; dynamic allocation can adjust executors when the scheduler and shuffle design support it. Large backfills run in quotas or dedicated node pools so they do not starve ingestion. Namespace quotas, priority classes, node pools/taints, and workload-specific autoscaling prevent an API traffic burst, a streaming checkpoint, and a Spark shuffle from competing unpredictably for the same resources.
-
-## 18. Interview discussion points
-
-This project is deliberately shaped to demonstrate production data-engineering judgment: Java ingestion and streaming, Scala/Spark batch processing, Kafka/Flink/Spark semantics, S3/Iceberg lakehouse design, Airflow orchestration, ClickHouse serving, Kubernetes operations, and privacy-aware multi-tenancy.
-
-It should be discussed honestly as a production-shaped design and implementation project, not as a substitute for years of operating a system at a prior employer. The strongest evidence will be benchmarks, failure-recovery tests, data-quality checks, documented trade-offs, and a working end-to-end vertical slice.
