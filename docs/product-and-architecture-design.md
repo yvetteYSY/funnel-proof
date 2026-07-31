@@ -1,18 +1,20 @@
-# One Click Data: Business-First Product and Architecture Design
+# FunnelProof: Verified Trial-to-Paid Funnel Design
 
-**Status:** Draft 0.1  
-**Primary audience:** Small-business owners and the developers who support them  
-**Initial channel:** Websites; iOS follows after the web product proves its onboarding and funnel model.
+**Status:** Draft 0.2 — B2B SaaS adoption pivot
+
+**Primary audience:** Independent B2B SaaS founders and small product teams (roughly 1–20 developers)
+
+**Initial channel:** A SaaS marketing site and web application; iOS follows only after the web onboarding proves demand.
 
 ## 1. Vision
 
-One Click Data gives a small-business owner a trustworthy answer to a simple business question:
+FunnelProof gives an independent B2B SaaS owner a trustworthy answer to a simple business question:
 
-> Where are prospective customers dropping out between first visit and the action that makes the business money?
+> Where do prospective users drop out between their first visit, signup, product activation, and paid subscription?
 
-The product makes that answer available without requiring the owner to design an event taxonomy, operate a data platform, or hire a data analyst. A business should be able to add a small web SDK, select an industry-specific funnel template, confirm its critical actions, and see a funnel within an hour.
+The product makes that answer available without requiring the owner to design an event taxonomy, operate a data platform, or hire a data analyst. A team should be able to add a small web SDK, define what “activation” means for its product, confirm three critical events, and see a verified trial-to-paid funnel within an hour.
 
-This is **not** a generic “capture every click” analytics product. It is an end-to-end, privacy-aware funnel service centered on the small set of user actions that represent the business journey: acquisition, signup or intent, activation, checkout or conversion, and repeat engagement.
+This is **not** a generic “capture every click” analytics product or a broad product-development suite. It is an end-to-end, privacy-aware **funnel-confidence service** centered on the few actions that determine a SaaS business outcome: acquisition, signup, activation, subscription, and return engagement.
 
 ## 2. Product goals
 
@@ -20,91 +22,99 @@ This is **not** a generic “capture every click” analytics product. It is an 
 
 1. **Fast time to first answer.** A new workspace can see a populated core funnel in less than one hour after installation.
 2. **Owner-readable metrics.** The default dashboard explains visits, stage-by-stage conversion, drop-off, and repeat engagement in plain business language.
-3. **Industry-specific onboarding.** The setup flow offers a clear starting template rather than a blank event-definition screen.
-4. **Trustworthy data.** Funnel numbers are versioned, validated, privacy-filtered, and reproducible from immutable source events.
+3. **Guided SaaS onboarding.** The setup flow asks what activation means and supplies the required event calls rather than presenting a blank analytics workspace.
+4. **Funnel confidence.** Funnel numbers are versioned, validated, privacy-filtered, reproducible from immutable source events, and visibly marked as verified or incomplete.
 5. **Low operational burden.** Customers use a hosted endpoint; they do not need to run Kafka, Spark, Flink, Kubernetes, or Airflow.
 6. **Open and portable.** The SDK, event schemas, documentation, and a self-host reference deployment are public. Customers can export their data and are not locked into a proprietary event format.
 
 ### Product principles
 
 - **Business outcome before telemetry volume.** Instrument events that change a decision, not every possible UI interaction.
-- **Opinionated defaults, configurable escape hatches.** Templates should work immediately and remain editable by a technical user.
+- **A narrow wedge before a platform.** Solve trial-to-paid for B2B SaaS before adding industries, channels, or broad analytics features.
+- **Opinionated defaults, configurable escape hatches.** The SaaS tracking plan should work immediately and remain editable by a technical user.
 - **Privacy is a product feature.** Collection is minimized, consent-aware, and protected before data reaches durable storage.
 - **One source of metric truth.** Real-time views are useful, but historical Spark-built tables are the canonical source for business reporting.
 - **Progressive complexity.** Basic setup must remain simple even though the hosted backend is built to scale.
+- **Confidence before sophistication.** A user must know whether a funnel is complete and fresh before being asked to interpret it.
 
 ## 3. Users and jobs to be done
 
 | User | Primary job | What success looks like |
 |---|---|---|
-| Business owner | Understand whether the core customer journey converts | Can identify the largest drop-off and act on it without SQL |
-| Growth / marketing lead | Compare traffic sources and campaigns | Can see which source produces activated or paying users, not only visits |
-| Developer / agency | Instrument a customer site safely | Adds the SDK, verifies a few events, and knows which properties are allowed |
+| SaaS founder / owner | Understand whether trial users reach value and become paid | Can identify the largest trial-to-paid drop-off and act on it without SQL |
+| Growth lead | Compare acquisition sources by activation and subscription | Can see which source produces activated or paying users, not only visits |
+| Developer / agency | Instrument a SaaS product safely | Adds the SDK, verifies three critical events, and knows which properties are allowed |
 | Data / privacy administrator | Control access, retention, and deletion | Can audit collection, export data, and fulfill deletion requests |
 
 ## 4. Scope
 
-### V1: web core funnels
+### V1: verified B2B SaaS trial-to-paid funnel
 
-V1 supports a JavaScript/TypeScript SDK for websites. It provides automatic page views and a deliberate API for business events. The product includes templates for the following core journeys:
+V1 supports a JavaScript/TypeScript SDK for a SaaS marketing site and web application. It provides consent-aware page views and a deliberate API for business events. It ships with one opinionated tracking plan:
 
-| Industry template | Default funnel |
-|---|---|
-| B2B SaaS | `landing_viewed` → `signup_completed` → `activation_completed` → `subscription_started` |
-| E-commerce | `product_viewed` → `cart_updated` → `checkout_started` → `purchase_completed` |
-| Marketplace / lead generation | `landing_viewed` → `lead_submitted` → `qualified_lead` → `booking_or_purchase_completed` |
+`landing_viewed` → `signup_completed` → `activation_completed` → `subscription_started`
 
-An owner selects one template during onboarding, labels it in business terms, and can add or remove steps. Funnel definitions are versioned so a historical chart always states the definition used to calculate it.
+During onboarding, the founder chooses the activation action that represents first value in their product—for example, `first_project_created`, `first_report_shared`, or `first_invoice_sent`. The setup guide maps that action to `activation_completed` and supplies the exact integration call. The owner may label the funnel in business terms, while the underlying definition remains versioned so every historical chart states the rule used to calculate it.
+
+### V1 positioning and differentiated value
+
+The category already contains capable open-source and hosted tools for web analytics, product analytics, custom events, funnels, retention, and self-hosting. FunnelProof will not try to out-feature those platforms. Its initial promise is narrower:
+
+> **Install three verified business events and know whether your SaaS trial converts to activation and paid subscription.**
+
+The product differentiates through a guided activation-definition interview, generated copy-paste instrumentation, a test journey, and a visible funnel-confidence checklist. The checklist shows whether each required event has been received, is schema-valid, is fresh, and is reconciled with the canonical result. The dashboard starts with one decision—where the trial-to-paid journey breaks—rather than an empty chart builder.
 
 ### Explicitly out of scope for V1
 
 - Native iOS SDK, session replay, heatmaps, and unrestricted DOM capture
+- E-commerce, marketplace, lead-generation, and additional industry templates
 - A full customer-data platform or marketing automation system
 - Ad attribution beyond supplied campaign parameters
 - Custom SQL authoring for business owners
 - Machine-learning recommendations
 - A customer-operated distributed cluster
 
-The future iOS SDK must emit the same event envelope and use the same consent, schema, and identity rules as the web SDK.
+The future iOS SDK and later industry templates must emit the same event envelope and use the same consent, schema, identity, and verification rules as V1.
 
 ## 5. Customer onboarding and funnel setup
 
 The onboarding experience is part of the system design, not an afterthought.
 
-1. **Create workspace.** The owner creates an organization, chooses a data region, and selects an industry template.
-2. **Confirm the outcome.** The owner names the business outcome, for example “paid subscription” or “completed purchase.”
-3. **Install the SDK.** The developer adds a single browser snippet and workspace key.
-4. **Verify automatic collection.** The SDK reports the first page view and checks consent state.
-5. **Add critical events.** The setup guide shows the exact `track()` calls required for the chosen template.
-6. **Run a test funnel.** A test-event mode verifies that every stage is received and that prohibited data was rejected.
-7. **Use the default dashboard.** The dashboard presents stage conversion, time between stages, drop-off, and seven-day return engagement.
+1. **Create workspace.** The founder creates an organization and chooses a data region.
+2. **Confirm the outcome.** The founder confirms that the tracked business outcome is a paid subscription.
+3. **Define activation.** The onboarding guide asks for the first action that proves a trial user reached product value.
+4. **Install the SDK.** The developer adds a single browser snippet and workspace key.
+5. **Verify automatic collection.** The SDK reports the first page view and checks consent state.
+6. **Add three critical events.** The setup guide shows the exact calls for signup, activation, and subscription.
+7. **Run a test funnel.** A test-event mode verifies every stage, reports prohibited fields, and highlights missing instrumentation.
+8. **Use the default dashboard.** The dashboard presents stage conversion, time between stages, drop-off, seven-day return engagement, and funnel-confidence status.
 
 Example installation:
 
 ```ts
-import { oneClickData } from "@one-click-data/web";
+import { funnelProof } from "@funnel-proof/web";
 
-oneClickData.init({
-  workspaceKey: "ocd_public_example",
+funnelProof.init({
+  workspaceKey: "fp_public_example",
   consent: "required"
 });
 
-oneClickData.track("signup_completed", {
+funnelProof.track("activation_completed", {
   plan: "starter",
-  acquisition_channel: "organic_search"
+  activation_action: "first_project_created"
 });
 ```
 
-The developer must add business events at meaningful success points. One Click Data does not infer a purchase from a button click.
+The developer must add business events at meaningful success points. One Click Data does not infer activation from a click or subscription from a pricing-page visit.
 
-## 6. Event contract and industry templates
+## 6. Event contract and B2B SaaS tracking plan
 
 Every accepted event uses a stable, versioned envelope. The event name identifies the business action; properties add only approved business context.
 
 ```json
 {
   "event_id": "01J0...",
-  "event_name": "purchase_completed",
+  "event_name": "subscription_started",
   "occurred_at": "2026-07-30T18:45:00.000Z",
   "received_at": "2026-07-30T18:45:01.019Z",
   "tenant_id": "workspace_123",
@@ -112,9 +122,9 @@ Every accepted event uses a stable, versioned envelope. The event name identifie
   "user_id": "optional-pseudonymous-stable-id",
   "session_id": "session_456",
   "properties": {
-    "amount_cents": 2900,
-    "currency": "USD",
-    "product_tier": "pro"
+    "plan": "pro",
+    "billing_interval": "monthly",
+    "acquisition_channel": "organic_search"
   },
   "context": {
     "platform": "web",
@@ -127,7 +137,7 @@ Every accepted event uses a stable, versioned envelope. The event name identifie
 }
 ```
 
-Reserved fields are controlled by the platform. Tenant-defined properties are approved through an event schema registry. A template declares required stages, optional dimensions, and forbidden fields. For example, the e-commerce template may allow `currency` and `amount_cents`, but never a full card number, email address, postal address, or free-form checkout note.
+Reserved fields are controlled by the platform. Tenant-defined properties are approved through an event schema registry. The SaaS tracking plan declares its required stages, optional dimensions, and forbidden fields. It may allow `plan`, `billing_interval`, and `acquisition_channel`, but never an email address, payment identifier, access token, free-form text, or customer content.
 
 Schema evolution uses additive changes when possible. Breaking changes create a new event or schema version and require an explicit migration in the control plane.
 
@@ -137,8 +147,8 @@ Schema evolution uses additive changes when possible. Breaking changes create a 
 |---|---|
 | Collection | Send page views automatically after consent and collect named business events through `track()` |
 | Identity | Support anonymous browsing, optional pseudonymous user identity, session identity, and post-login identity stitching |
-| Funnel definitions | Allow an owner to select, name, version, activate, and retire a funnel definition |
-| Reporting | Show counts, conversion rate, median time to next stage, source breakdown, and seven-day return engagement |
+| Funnel definitions | Provide the versioned SaaS trial-to-paid funnel; allow an owner to label activation and technical users to extend it safely |
+| Reporting | Show counts, conversion rate, median time to next stage, source breakdown, seven-day return engagement, and confidence status |
 | Validation | Reject invalid event names, invalid property types, missing required fields, expired workspace keys, and disallowed properties |
 | Data freshness | Surface ordinary events in the near-real-time view within five minutes; publish durable batch reporting on an hourly cadence |
 | Export | Export selected events and aggregates as CSV or Parquet through a documented API |
@@ -147,7 +157,7 @@ Schema evolution uses additive changes when possible. Breaking changes create a 
 
 ## 8. Architecture overview
 
-The product is a multi-tenant hosted service. The customer only integrates the SDK and uses the dashboard; distributed components are operated by One Click Data.
+The product is a multi-tenant hosted service. The customer only integrates the SDK and uses the dashboard; distributed components are operated by FunnelProof.
 
 ```mermaid
 flowchart LR
@@ -168,7 +178,7 @@ flowchart LR
 
 ### 8.1 Control plane
 
-The control plane is a Java service backed by PostgreSQL. It owns workspaces, user roles, API keys, industry templates, consent policy, event schemas, funnel versions, retention settings, and data-subject requests. It is authoritative for tenant configuration; event processors receive a versioned, cached projection of the configuration.
+The control plane is a Java service backed by PostgreSQL. It owns workspaces, user roles, API keys, the B2B SaaS tracking plan, consent policy, event schemas, funnel versions, retention settings, and data-subject requests. It is authoritative for tenant configuration; event processors receive a versioned, cached projection of the configuration.
 
 ### 8.2 Web SDK
 
@@ -224,6 +234,10 @@ ClickHouse is the MPP analytical serving database. It exposes precomputed funnel
 
 The dashboard compares provisional streaming counts with the last canonical batch result internally; the canonical result is the source for exported reports and billing-sensitive metrics.
 
+### 8.10 Development execution boundary
+
+The architecture above is a target design, **not** an instruction to provision cloud infrastructure. During development, FunnelProof runs locally against synthetic data. S3 is represented by MinIO; Kafka, Flink, Spark, Airflow, PostgreSQL, and ClickHouse are optional local containers, not managed services. Kubernetes is a design and later local-learning concern, not a V1 deployment requirement.
+
 ## 9. Reliability, correctness, and operations
 
 ### Delivery and duplicate handling
@@ -265,72 +279,104 @@ Privacy controls apply before data lands in the lake.
 
 ## 11. Public and self-hosting posture
 
-The public project should publish the TypeScript SDK, event contract, template definitions, documentation, example site, and a reference deployment under the Apache-2.0 license. This supports adoption and makes integration behavior inspectable.
+The public project should publish the TypeScript SDK, event contract, B2B SaaS tracking plan, documentation, example site, and a reference deployment under the Apache-2.0 license. This supports adoption and makes integration behavior inspectable.
 
-The hosted offering operates the distributed pipeline and can provide managed retention, observability, backup, support, and organization controls. A lightweight self-host reference uses Docker Compose with the SDK, collector, PostgreSQL, and ClickHouse for evaluation and low-volume use. It preserves the same event contract but does not require a small business to operate Kafka, Flink, Spark, or Kubernetes.
+The hosted offering is a future option, not a development dependency. It would operate the distributed pipeline and provide managed retention, observability, backup, support, and organization controls. The initial self-host reference uses a local container runtime such as Colima or Podman, plus the SDK, collector, PostgreSQL, and ClickHouse. It preserves the same event contract but does not require a small business to operate Kafka, Flink, Spark, or Kubernetes.
 
-## 12. Success metrics and service objectives
+## 12. Zero-cost execution policy
+
+FunnelProof is developed under a **zero-cost-by-default** rule. No action taken for this project may create a bill, require a credit card, start a paid trial, or provision a managed cloud resource without explicit approval that names the expected cost, spending cap, and shutdown plan.
+
+### Allowed now
+
+- Public GitHub repository, local Git commits, and public documentation
+- OpenJDK/Java, Scala, Python, Node.js, and TypeScript tooling
+- Local development using free/open-source software: PostgreSQL, ClickHouse, MinIO, Apache Kafka, Apache Flink, Apache Spark, and Apache Airflow
+- Local containers through a free local runtime such as Colima or Podman
+- Synthetic test events and local dashboards
+
+### Explicitly not allowed now
+
+- AWS, GCP, Azure, Databricks, Confluent Cloud, managed Kubernetes, or a paid database
+- A cloud object-storage bucket, managed Kafka cluster, hosted Airflow, or any paid API
+- Entering a credit card, accepting a paid trial, or deploying infrastructure through Terraform or a cloud console
+- Collecting real customer data before a privacy policy, consent flow, and an approved operating plan exist
+
+### Execution profiles
+
+| Profile | What runs | Cost policy |
+|---|---|---|
+| Starter — execute first | Sample SaaS site, TypeScript SDK, Java collector, PostgreSQL or ClickHouse, and synthetic funnel events | Entirely local; no cloud account |
+| Distributed learning — optional | Local Kafka, Flink, Spark, MinIO, and Airflow to demonstrate the target architecture | Entirely local; use only when the starter flow works |
+| Hosted beta — deferred | Multi-tenant cloud deployment for real external users | Requires a separate written cost plan and explicit approval before any provisioning |
+
+The only practical cost of the first two profiles is use of the developer's existing computer, local disk, and electricity. Every command and setup guide should state which profile it belongs to.
+
+## 13. Success metrics and service objectives
 
 | Metric | Initial target |
 |---|---|
 | Time from workspace creation to first verified event | Under 15 minutes |
-| Time to first usable template funnel | Under 60 minutes |
+| Time to first verified trial-to-paid funnel | Under 60 minutes |
 | Accepted event availability in live view | P95 under 5 minutes |
 | Canonical Gold-table freshness | Hourly, with visible last-success timestamp |
-| Funnel reconciliation | Provisional-to-canonical delta monitored per tenant |
+| Funnel confidence | Every required stage shows received, schema-valid, fresh, and reconciled status |
 | Event schema rejection visibility | Actionable reason visible within 5 minutes |
 | Data export availability | Customer-selectable dates and documented CSV/Parquet formats |
 
-The most important product metric is not total events ingested. It is the percentage of active workspaces with a verified, owner-used core funnel.
+The most important product metric is not total events ingested. It is the percentage of active workspaces with a verified trial-to-paid funnel that a founder returns to use each week.
 
-## 13. Delivery plan
+## 14. Delivery plan
 
 ### Phase 0 — product contract
 
-- Publish the event envelope, privacy policy, and three industry templates.
-- Define the owner dashboard wireframe and the exact funnel questions it answers.
+- Publish the event envelope, privacy policy, and one B2B SaaS tracking plan.
+- Define the founder dashboard wireframe and the exact trial-to-paid questions it answers.
 - Build a sample B2B SaaS website that emits the required critical events.
 
 ### Phase 1 — vertical slice
 
 - TypeScript SDK with consent gate, page view, `track()`, batching, and test mode.
-- Java collector with workspace key validation, schema validation, and Kafka production.
-- Kafka → Java Flink → ClickHouse path for a live three-step funnel.
-- Minimal dashboard with a setup checklist and first verified event.
+- Java collector with workspace key validation, schema validation, and local PostgreSQL or ClickHouse storage.
+- Minimal dashboard with a setup checklist, first verified event, and a funnel-confidence indicator.
+- Run only synthetic data on a local machine; do not provision any external service.
 
 ### Phase 2 — durable analytical truth
 
-- Iceberg tables on S3-compatible storage.
-- Scala Spark Silver/Gold jobs for sessions, canonical funnel results, and seven-day retention.
-- Airflow orchestration, backfills, data-quality gates, and reconciliation.
+- Local MinIO-backed Iceberg tables.
+- Local Kafka/Flink plus Scala Spark Silver/Gold jobs for sessions, canonical funnel results, and seven-day retention.
+- Local Airflow orchestration, backfills, data-quality gates, and reconciliation.
 
-### Phase 3 — beta hardening
+### Phase 3 — beta hardening and cost decision
 
-- Tenant management, RBAC, retention, export, and deletion workflow.
-- Kubernetes deployment, dashboards, alerting, load tests, and failure-recovery exercises.
-- Self-host Docker Compose reference and public implementation documentation.
+- Tenant management, RBAC, retention, export, and deletion workflow in the self-host reference.
+- Local load tests, failure-recovery exercises, and public implementation documentation.
+- Write a cloud cost plan; seek explicit approval before any hosted deployment, managed service, or real-user beta.
 
-## 14. Key trade-offs
+## 15. Key trade-offs
 
 | Decision | Chosen approach | Why |
 |---|---|---|
+| First adopter | Independent B2B SaaS teams | A common trial-to-paid journey allows a focused onboarding flow and avoids competing as generic web analytics |
 | First client platform | Web | Faster installation and iteration than a native iOS SDK |
 | Event capture model | Explicit critical events plus automatic page views | Preserves privacy and business meaning |
 | Stream and batch | Flink for provisional real time; Spark for canonical batch | Matches latency needs without allowing two ungoverned metric definitions |
 | Lake storage | Iceberg on S3-compatible storage | Supports evolution, replay, reproducibility, and portability |
 | Serving database | ClickHouse | Fast analytical queries and accessible self-host path |
 | Customer deployment | Hosted by default, lightweight self-host option | Small businesses receive value without operating a data platform |
+| Development cost | Local-first with synthetic data | Builds and demonstrates the product without a cloud bill or credit card |
 | Open posture | Apache-2.0 SDK and public schemas/docs | Builds trust and reduces adoption friction |
 
-## 15. Open design questions
+## 16. Open design questions
 
-1. Which industry receives the first polished template: B2B SaaS or e-commerce?
-2. What is the first retention default: 7-day return engagement, 30-day repeat purchase, or template-specific behavior?
+1. Which founder-described action should the activation interview accept in V1, and how should it map to the canonical event?
+2. What is the first retention default: 7-day return engagement or a template-specific window after activation?
 3. Which cloud and data-residency region should the hosted beta support first?
-4. Should the first dashboard be read-only for owners, or include a guided funnel editor from the start?
+4. Should the first dashboard be read-only for founders, or include a guided activation-step editor from the start?
 5. What free-tier event and retention limits keep evaluation useful without making platform cost unpredictable?
+6. What evidence from the first ten design-partner interviews would justify adding a second industry template?
 
-## 16. Operational design notes and interview answers
+## 17. Operational design notes and interview answers
 
 ### Why Kafka only guarantees ordering within a partition
 
@@ -344,7 +390,7 @@ The producer hashes the record key to select a partition. The key therefore make
 | `user_id` | Events for a known user remain ordered and user state is simple to update | Pre-login users may not have a user ID; one user can still be hot; changing identity after login can move later events to a different partition |
 | `tenant_id + stable_tracking_id` | Preserves order for one anonymous browser/session while distributing a tenant's users across partitions | Does not create total order for every user across devices; identity stitching must happen downstream |
 
-For One Click Data, the default key is `tenant_id + stable_tracking_id`, where the tracking ID exists before login and stays stable across the browser journey. A `user_id` is added as a property after identification, rather than replacing the Kafka key mid-session. Cross-device ordering is resolved from event time during Silver processing; it should not be inferred from the interleaving of Kafka partitions. Kafka partitioning is not a tenant-security boundary—authorization and storage policy provide isolation.
+For FunnelProof, the default key is `tenant_id + stable_tracking_id`, where the tracking ID exists before login and stays stable across the browser journey. A `user_id` is added as a property after identification, rather than replacing the Kafka key mid-session. Cross-device ordering is resolved from event time during Silver processing; it should not be inferred from the interleaving of Kafka partitions. Kafka partitioning is not a tenant-security boundary—authorization and storage policy provide isolation.
 
 ### Why exactly once is an end-to-end design issue
 
@@ -415,7 +461,7 @@ Kafka/Flink consumers have a different constraint: useful stream parallelism can
 
 Spark is batch-oriented and is tuned separately. Each job declares executor CPU, memory, shuffle/storage overhead, and maximum parallelism; dynamic allocation can adjust executors when the scheduler and shuffle design support it. Large backfills run in quotas or dedicated node pools so they do not starve ingestion. Namespace quotas, priority classes, node pools/taints, and workload-specific autoscaling prevent an API traffic burst, a streaming checkpoint, and a Spark shuffle from competing unpredictably for the same resources.
 
-## 17. Interview discussion points
+## 18. Interview discussion points
 
 This project is deliberately shaped to demonstrate production data-engineering judgment: Java ingestion and streaming, Scala/Spark batch processing, Kafka/Flink/Spark semantics, S3/Iceberg lakehouse design, Airflow orchestration, ClickHouse serving, Kubernetes operations, and privacy-aware multi-tenancy.
 
