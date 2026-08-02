@@ -28,8 +28,10 @@ public final class CollectorApplication {
         EventValidator validator = new EventValidator();
         Path dataDirectory = Path.of(System.getenv().getOrDefault("FUNNEL_PROOF_DATA_DIR", ".funnel-proof/events"));
         EventStore store = new FileEventStore(dataDirectory);
+        Path eventLogDirectory = Path.of(System.getenv().getOrDefault("FUNNEL_PROOF_EVENT_LOG_DIR", ".funnel-proof/event-log"));
+        EventIngestionService ingestionService = new EventIngestionService(new LocalEventLog(eventLogDirectory), store);
         WorkspaceKeyResolver workspaceKeys = WorkspaceKeyResolver.localFromEnvironment();
-        HttpServer server = createServer(port, validator, store, workspaceKeys);
+        HttpServer server = createServer(port, validator, store, ingestionService, workspaceKeys);
         server.start();
         System.out.printf("FunnelProof collector listening on http://127.0.0.1:%d/fp/collect%n", port);
         System.out.printf("Local funnel report: http://127.0.0.1:%d/fp/insights/funnel%n", port);
@@ -39,10 +41,11 @@ public final class CollectorApplication {
             int port,
             EventValidator validator,
             EventStore store,
+            EventIngestionService ingestionService,
             WorkspaceKeyResolver workspaceKeys
     ) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
-        server.createContext("/fp/collect", exchange -> handleCollect(exchange, validator, store, workspaceKeys));
+        server.createContext("/fp/collect", exchange -> handleCollect(exchange, validator, ingestionService, workspaceKeys));
         server.createContext("/fp/insights/funnel", exchange -> handleFunnelInsights(exchange, store, workspaceKeys));
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         return server;
@@ -51,7 +54,7 @@ public final class CollectorApplication {
     private static void handleCollect(
             HttpExchange exchange,
             EventValidator validator,
-            EventStore store,
+            EventIngestionService ingestionService,
             WorkspaceKeyResolver workspaceKeys
     ) throws IOException {
         if (!"POST".equals(exchange.getRequestMethod())) {
@@ -74,7 +77,7 @@ public final class CollectorApplication {
                 respond(exchange, 422, Map.of("accepted", false, "reason", result.reasonCode()));
                 return;
             }
-            StoreAppendResult appendResult = store.append(workspaceId.get(), result.event());
+            EventLogAppendResult appendResult = ingestionService.ingest(workspaceId.get(), result.event());
             respond(exchange, 202, Map.of(
                     "accepted", true,
                     "event_id", result.event().path("event_id").asText(),
