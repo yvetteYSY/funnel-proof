@@ -17,6 +17,14 @@ The image is pinned to Apache Kafka `4.3.1`; it is the same version as the colle
 
 With `FUNNEL_PROOF_EVENT_LOG=kafka`, the collector publishes privacy-filtered accepted-event envelopes to `funnelproof.accepted-events.v1`. Records are keyed by `workspace_id + anonymous_id`, preserving a browser journey's order within one Kafka partition.
 
-`KafkaEventMaterializer` is the consumer-side worker foundation. It writes to the durable event store before committing offsets. A structurally invalid Kafka record is recorded in a local safe-reason audit and then committed, preventing one poison message from blocking a partition. A storage failure is not committed and is replayed.
+`KafkaEventMaterializer` is the consumer-side worker. It writes to the durable event store before committing offsets. A structurally invalid Kafka record is recorded in a local safe-reason audit and then committed, preventing one poison message from blocking a partition. A storage failure is not committed and is replayed.
 
-The consumer is covered by unit tests but is not started automatically. This keeps the default demo simple and local while we add the operational runner in the next slice.
+After starting the local broker and sending events with `FUNNEL_PROOF_EVENT_LOG=kafka`, run one bounded materializer poll:
+
+```bash
+cd services/collector
+mvn -Dmaven.repo.local=../../.m2 compile exec:java \
+  -Dexec.mainClass=dev.funnelproof.collector.KafkaMaterializerApplication
+```
+
+The default group is `funnelproof-local-bronze-v1`. Override it with `FUNNEL_PROOF_KAFKA_CONSUMER_GROUP` to perform an isolated replay. The command prints counts and committed-partition totals only; raw event payloads are not printed.
