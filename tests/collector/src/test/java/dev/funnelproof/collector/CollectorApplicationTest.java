@@ -10,12 +10,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Map;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class CollectorApplicationTest {
     private final HttpClient client = HttpClient.newHttpClient();
+    @TempDir
+    Path eventLogDirectory;
     private InMemoryEventStore store;
     private HttpServer server;
 
@@ -26,6 +30,7 @@ class CollectorApplicationTest {
                 0,
                 new EventValidator(),
                 store,
+                new EventIngestionService(new LocalEventLog(eventLogDirectory), store),
                 WorkspaceKeyResolver.fixed(Map.of("fp_public_local_test", "test_workspace"))
         );
         server.start();

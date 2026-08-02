@@ -12,7 +12,7 @@ The initial local-only vertical slice contains:
 
 - `contracts/` — versioned event schema and the B2B SaaS tracking plan.
 - `packages/web-sdk/` — privacy-first TypeScript SDK; it emits a minimal first-party `vpv` and explicit funnel events only after consent.
-- `services/collector/` — Java 21 loopback collector with an idempotent, workspace-scoped local append-only store and a provisional funnel-insight endpoint.
+- `services/collector/` — Java 21 loopback collector with a Kafka-compatible local event-log boundary, idempotent workspace-scoped materialization, and a provisional funnel-insight endpoint.
 - `apps/demo-saas/` — synthetic trial-to-paid walkthrough; it never sends real customer data.
 - `tests/` — contract fixtures plus SDK and collector tests.
 
@@ -28,7 +28,7 @@ make verify
 
 No cloud account, paid API, container runtime, or real customer data is required.
 
-The starter's local funnel report is intentionally marked **provisional**. It makes the privacy, event-ordering, idempotency, and data-freshness decisions executable before we add the Kafka/Flink/Spark scale-out path described in the design.
+The starter's local funnel report is intentionally marked **provisional**. It makes the privacy, event ordering, idempotency, and data-freshness decisions executable before we run the Kafka/Flink/Spark scale-out path described in the design. The collector now uses a local durable event log with the same topic/key contract planned for Kafka; it does not require a container runtime or broker to run.
 
 ## Development cost
 
