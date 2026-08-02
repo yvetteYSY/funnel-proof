@@ -30,6 +30,8 @@ No cloud account, paid API, container runtime, or real customer data is required
 
 The starter's local funnel report is intentionally marked **provisional**. It makes the privacy, event ordering, idempotency, and data-freshness decisions executable before we run the Kafka/Flink/Spark scale-out path described in the design. The collector uses a local durable event log by default and has an opt-in Apache Kafka producer adapter with the same topic/key contract; neither requires a cloud account.
 
+The optional [local Kafka profile](infra/kafka/README.md) is pinned to a free Apache image and remains loopback-only. It is never started by the default verification or demo commands.
+
 ## Development cost
 
 Development is local and zero-cost by default: no cloud resources, paid APIs, credit-card trials, or real customer data. See the design document's **Zero-cost execution policy** before running any project setup.
