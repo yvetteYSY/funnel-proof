@@ -28,3 +28,18 @@ To view the synthetic demo's funnel after generating its events, use the same wo
 curl -H 'x-funnel-proof-workspace-key: fp_public_local_demo' \
   http://127.0.0.1:8080/fp/insights/funnel
 ```
+
+## Local replay / backfill
+
+The local event log can rebuild a separate read-model directory from its accepted, privacy-filtered records. This is a safe rehearsal for the production Kafka-to-Iceberg/Spark backfill path: it advances a checkpoint only after each idempotent store write succeeds.
+
+Choose a new target directory; this command never deletes the source log or an existing target:
+
+```bash
+FUNNEL_PROOF_BACKFILL_DATA_DIR=.funnel-proof/rebuild/events \
+FUNNEL_PROOF_BACKFILL_CHECKPOINT=.funnel-proof/rebuild/checkpoints/bronze.offset \
+mvn -Dmaven.repo.local=../../.m2 compile exec:java \
+  -Dexec.mainClass=dev.funnelproof.collector.LocalBackfillApplication
+```
+
+The output reports only processed/written counts and its checkpoint—never raw event payloads.
