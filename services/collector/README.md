@@ -10,6 +10,8 @@ The local log is a free stand-in for Kafka, not a Kafka broker. It lets the coll
 
 This phase does not create cloud resources or run a Kafka broker. The future Kafka producer will implement the same `EventLog` boundary with idempotent production, the same stable `event_id`, and the same partition key. The local log contains only privacy-filtered accepted events and never logs rejected request payloads.
 
+The optional `kafka` event-log mode is now implemented with Apache Kafka's Java client. It uses `acks=all`, idempotent production, and bounded acknowledgement waiting. It is still not a blanket “exactly once” claim: browser retries and downstream replays are handled by the stable `event_id`, the materializer's idempotent writes, and future stream-layer dedupe.
+
 ## Run locally
 
 ```bash
@@ -21,6 +23,15 @@ mvn -Dmaven.repo.local=../../.m2 compile exec:java -Dexec.mainClass=dev.funnelpr
 The collector listens only on `127.0.0.1:8080` by default. Set `FUNNEL_PROOF_PORT` to choose another local port.
 
 By default, the demo is authorized with the local-only pair `fp_public_local_demo` → `demo_workspace`. To choose your own values without committing them, set `FUNNEL_PROOF_WORKSPACE_KEY` and `FUNNEL_PROOF_WORKSPACE_ID` in your shell before starting the collector. Override the local read-model path with `FUNNEL_PROOF_DATA_DIR` or the local event-log path with `FUNNEL_PROOF_EVENT_LOG_DIR` if needed. The `.funnel-proof/` directory is ignored by Git.
+
+When a local Kafka broker is available, opt in explicitly; this does not start a broker itself:
+
+```bash
+FUNNEL_PROOF_EVENT_LOG=kafka \
+FUNNEL_PROOF_KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092 \
+mvn -Dmaven.repo.local=../../.m2 compile exec:java \
+  -Dexec.mainClass=dev.funnelproof.collector.CollectorApplication
+```
 
 To view the synthetic demo's funnel after generating its events, use the same workspace key:
 

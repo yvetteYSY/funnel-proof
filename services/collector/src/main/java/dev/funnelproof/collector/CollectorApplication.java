@@ -29,12 +29,36 @@ public final class CollectorApplication {
         Path dataDirectory = Path.of(System.getenv().getOrDefault("FUNNEL_PROOF_DATA_DIR", ".funnel-proof/events"));
         EventStore store = new FileEventStore(dataDirectory);
         Path eventLogDirectory = Path.of(System.getenv().getOrDefault("FUNNEL_PROOF_EVENT_LOG_DIR", ".funnel-proof/event-log"));
-        EventIngestionService ingestionService = new EventIngestionService(new LocalEventLog(eventLogDirectory), store);
+        EventLog eventLog = eventLogFromEnvironment(eventLogDirectory);
+        registerShutdownHook(eventLog);
+        EventIngestionService ingestionService = new EventIngestionService(eventLog, store);
         WorkspaceKeyResolver workspaceKeys = WorkspaceKeyResolver.localFromEnvironment();
         HttpServer server = createServer(port, validator, store, ingestionService, workspaceKeys);
         server.start();
         System.out.printf("FunnelProof collector listening on http://127.0.0.1:%d/fp/collect%n", port);
         System.out.printf("Local funnel report: http://127.0.0.1:%d/fp/insights/funnel%n", port);
+    }
+
+    private static EventLog eventLogFromEnvironment(Path localEventLogDirectory) throws IOException {
+        String mode = System.getenv().getOrDefault("FUNNEL_PROOF_EVENT_LOG", "local");
+        return switch (mode) {
+            case "local" -> new LocalEventLog(localEventLogDirectory);
+            case "kafka" -> KafkaEventLog.forBootstrapServers(
+                    System.getenv().getOrDefault("FUNNEL_PROOF_KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
+            );
+            default -> throw new IllegalArgumentException("FUNNEL_PROOF_EVENT_LOG must be local or kafka");
+        };
+    }
+
+    private static void registerShutdownHook(EventLog eventLog) {
+        if (!(eventLog instanceof AutoCloseable closeable)) return;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                closeable.close();
+            } catch (Exception ignored) {
+                // Shutdown must not emit payloads or mask the process exit.
+            }
+        }, "funnel-proof-event-log-close"));
     }
 
     static HttpServer createServer(
