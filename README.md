@@ -28,7 +28,7 @@ make verify
 
 No cloud account, paid API, container runtime, or real customer data is required.
 
-The starter's local funnel report is intentionally marked **provisional**. It makes the privacy, event ordering, idempotency, and data-freshness decisions executable before we run the Kafka/Flink/Spark scale-out path described in the design. The collector now uses a local durable event log with the same topic/key contract planned for Kafka; it does not require a container runtime or broker to run.
+The starter's local funnel report is intentionally marked **provisional**. It makes the privacy, event ordering, idempotency, and data-freshness decisions executable before we run the Kafka/Flink/Spark scale-out path described in the design. The collector uses a local durable event log by default and has an opt-in Apache Kafka producer adapter with the same topic/key contract; neither requires a cloud account.
 
 ## Development cost
 

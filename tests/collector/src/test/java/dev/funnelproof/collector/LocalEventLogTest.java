@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LocalEventLogTest {
@@ -31,10 +32,29 @@ class LocalEventLogTest {
         assertFalse(persisted.contains("workspace_key"));
     }
 
+    @Test
+    void readsRecordsStrictlyAfterAConsumerCheckpoint() throws Exception {
+        LocalEventLog eventLog = new LocalEventLog(eventLogDirectory);
+        KafkaEventRecordFactory factory = new KafkaEventRecordFactory();
+        eventLog.publish(factory.create("demo_workspace", event()));
+        eventLog.publish(factory.create("demo_workspace", secondEvent()));
+
+        assertEquals(2, eventLog.readAfter(0).size());
+        assertEquals(2, eventLog.readAfter(0).getLast().offset());
+        assertEquals("event-identifier-0002", eventLog.readAfter(1).getFirst().record().eventId());
+        assertEquals(0, eventLog.readAfter(2).size());
+    }
+
     private static ObjectNode event() {
         ObjectNode event = MAPPER.createObjectNode();
         event.put("anonymous_id", "anonymous-browser-0001");
         event.put("event_id", "event-identifier-0001");
+        return event;
+    }
+
+    private static ObjectNode secondEvent() {
+        ObjectNode event = event();
+        event.put("event_id", "event-identifier-0002");
         return event;
     }
 }

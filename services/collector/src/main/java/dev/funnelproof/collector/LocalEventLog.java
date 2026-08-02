@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -45,15 +47,33 @@ public final class LocalEventLog implements EventLog {
         return EventLogAppendResult.written();
     }
 
+    /** Reads records strictly after a committed consumer checkpoint. Local offsets start at one. */
+    public synchronized List<LoggedEvent> readAfter(long offset) throws IOException {
+        if (offset < 0) throw new IOException("event log offset cannot be negative");
+        if (!Files.exists(logFile)) return List.of();
+
+        List<LoggedEvent> records = new ArrayList<>();
+        long currentOffset = 0;
+        int lineNumber = 0;
+        for (String line : Files.readAllLines(logFile, StandardCharsets.UTF_8)) {
+            lineNumber++;
+            if (line.isBlank()) continue;
+            currentOffset++;
+            if (currentOffset <= offset) continue;
+            records.add(new LoggedEvent(currentOffset, parseRecord(line, lineNumber)));
+        }
+        return List.copyOf(records);
+    }
+
     private void loadExistingEventIdentities() throws IOException {
         if (!Files.exists(logFile)) return;
         int lineNumber = 0;
         for (String line : Files.readAllLines(logFile, StandardCharsets.UTF_8)) {
             lineNumber++;
             if (line.isBlank()) continue;
-            JsonNode record = mapper.readTree(line);
-            String workspaceId = record.path("workspace_id").asText();
-            String eventId = record.path("event").path("event_id").asText();
+            KafkaEventRecord record = parseRecord(line, lineNumber);
+            String workspaceId = record.workspaceId();
+            String eventId = record.eventId();
             if (workspaceId.isBlank() || eventId.isBlank() || !eventIdentities.add(identity(workspaceId, eventId))) {
                 throw new IOException("invalid persisted event log record at " + FILENAME + ":" + lineNumber);
             }
@@ -62,5 +82,18 @@ public final class LocalEventLog implements EventLog {
 
     private static String identity(String workspaceId, String eventId) {
         return workspaceId.length() + ":" + workspaceId + eventId;
+    }
+
+    private KafkaEventRecord parseRecord(String line, int lineNumber) throws IOException {
+        JsonNode parsed = mapper.readTree(line);
+        String workspaceId = parsed.path("workspace_id").asText();
+        if (!(parsed.path("event") instanceof com.fasterxml.jackson.databind.node.ObjectNode event)) {
+            throw new IOException("invalid persisted event log record at " + FILENAME + ":" + lineNumber);
+        }
+        try {
+            return new KafkaEventRecordFactory().create(workspaceId, event);
+        } catch (IllegalArgumentException exception) {
+            throw new IOException("invalid persisted event log record at " + FILENAME + ":" + lineNumber, exception);
+        }
     }
 }
