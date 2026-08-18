@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://funnelproof.dev/pipeline/contracts/serving-funnel-daily.v1.schema.json",
+  "title": "FunnelProof canonical daily funnel serving snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "workspace_id",
+    "event_date",
+    "funnel_definition_version",
+    "stage_name",
+    "unique_users",
+    "snapshot_version",
+    "canonical_completed_at"
+  ],
+  "properties": {
+    "workspace_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{1,63}$" },
+    "event_date": { "type": "string", "format": "date" },
+    "funnel_definition_version": { "const": "1.0.0" },
+    "stage_name": {
+      "enum": ["vpv", "signup_completed", "activation_completed", "subscription_started"]
+    },
+    "unique_users": { "type": "integer", "minimum": 0 },
+    "snapshot_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "canonical_completed_at": { "type": "string", "format": "date-time" },
+    "data_sla_status": { "enum": ["healthy", "stale", "failed"] }
+  }
+}
