@@ -26,6 +26,18 @@ The screenshot is generated from synthetic local events only: 10 page views, 5 s
 
 Seed a repeatable, privacy-safe dashboard scenario with `make demo-data`. The available scenarios include healthy conversion, signup drop-off, payment drop-off, late arrivals ordered by event time, stable-event retry/deduplication, and a subscription anomaly evaluated from daily aggregates. Details are in the [demo guide](apps/demo-saas/README.md#repeatable-synthetic-scenarios).
 
+### First run (local and free)
+
+After `npm install`, run the complete safe walkthrough:
+
+```bash
+make demo-start
+make demo-data SCENARIO=healthy
+make demo-check
+```
+
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) to see the dashboard. It starts a loopback-only collector and dashboard, stores only synthetic data under ignored `.funnel-proof/demo/`, and never creates a cloud resource. When finished, run `make demo-stop`.
+
 ## Local verification
 
 Install the free runtimes described in the design's zero-cost execution policy, then run:

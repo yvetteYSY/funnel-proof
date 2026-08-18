@@ -5,6 +5,17 @@ The demo is a synthetic walkthrough of the V1 trial-to-paid funnel and local bus
 With Node.js, Java, and Maven installed:
 
 ```bash
+npm install
+make demo-start
+make demo-data SCENARIO=healthy
+make demo-check
+```
+
+Open `http://127.0.0.1:5173`, then use `make demo-stop` when finished. This is the recommended first run: it creates no cloud resources and writes only ignored synthetic local state.
+
+To start each process yourself instead:
+
+```bash
 # Terminal 1
 cd services/collector
 mvn -Dmaven.repo.local=../../.m2 test

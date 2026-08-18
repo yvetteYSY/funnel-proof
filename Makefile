@@ -1,4 +1,4 @@
-.PHONY: doctor test verify collector-test demo-data
+.PHONY: doctor test verify collector-test demo-start demo-stop demo-data demo-check
 
 SCENARIO ?= healthy
 
@@ -18,5 +18,14 @@ verify:
 collector-test:
 	cd services/collector && mvn -Dmaven.repo.local=../../.m2 test
 
+demo-start:
+	bash scripts/demo-start.sh
+
+demo-stop:
+	bash scripts/demo-stop.sh
+
 demo-data:
 	node scripts/seed-demo-data.mjs $(SCENARIO)
+
+demo-check:
+	node scripts/demo-check.mjs
