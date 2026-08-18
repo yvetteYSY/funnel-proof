@@ -16,6 +16,14 @@ The initial local-only vertical slice contains:
 - `apps/demo-saas/` — synthetic trial-to-paid walkthrough; it never sends real customer data.
 - `tests/` — contract fixtures plus SDK and collector tests.
 
+## Local dashboard demo
+
+The demo app now includes a small business-owner dashboard: aggregate stage conversion, the data-freshness SLA, deterministic next-step commentary, and an explicitly gated anomaly status. It reads only the collector's workspace-scoped aggregate report; it never renders identifiers or event payloads.
+
+![Synthetic local dashboard result](docs/demo-dashboard.png)
+
+The screenshot is generated from synthetic local events only: 10 page views, 5 signups, 4 activations, and 1 subscription. It is illustrative, not a customer metric or a production benchmark.
+
 ## Local verification
 
 Install the free runtimes described in the design's zero-cost execution policy, then run:

@@ -3,35 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FunnelProof local SaaS demo</title>
+    <title>FunnelProof local dashboard</title>
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <main>
-      <h1>FunnelProof local SaaS demo</h1>
-      <p>This demo emits only synthetic, privacy-filtered funnel events to a local collector.</p>
+      <header class="page-header">
+        <p class="eyebrow">FunnelProof · local-only workspace</p>
+        <h1>Know where your growth funnel needs attention.</h1>
+        <p>This dashboard reads accepted, synthetic, privacy-filtered events from your loopback collector. It does not call a cloud service or an AI API.</p>
+      </header>
 
-      <label>
-        <input id="analytics-consent" type="checkbox" />
-        I consent to local analytics for this demo.
-      </label>
-
-      <section aria-label="Synthetic funnel actions">
-        <h2>Trial-to-paid funnel</h2>
-        <button id="signup" type="button">Complete synthetic signup</button>
-        <button id="activation" type="button">Create first project</button>
-        <button id="subscription" type="button">Start synthetic subscription</button>
+      <section class="panel controls" aria-label="Synthetic funnel actions">
+        <div>
+          <p class="eyebrow">Synthetic demo controls</p>
+          <h2>Create a safe local walkthrough</h2>
+          <label>
+            <input id="analytics-consent" type="checkbox" />
+            I consent to local analytics for this demo.
+          </label>
+        </div>
+        <div class="action-buttons">
+          <button id="signup" type="button">Complete signup</button>
+          <button id="activation" type="button">Create first project</button>
+          <button id="subscription" type="button">Start subscription</button>
+        </div>
       </section>
 
-      <output id="status" aria-live="polite">Consent is required before event collection.</output>
+      <output id="status" class="event-status" aria-live="polite">Consent is required before event collection.</output>
 
-      <section aria-labelledby="report-heading">
-        <h2 id="report-heading">Local funnel insight</h2>
-        <p>This is a provisional report from accepted synthetic events only. It does not use an AI service.</p>
-        <button id="refresh-report" type="button">Refresh local funnel</button>
-        <output id="report-status" aria-live="polite">Start the local collector to load a funnel report.</output>
-        <ol id="report-stages" aria-label="Funnel stages"></ol>
-        <p id="report-commentary"></p>
+      <section class="dashboard-header" aria-labelledby="report-heading">
+        <div>
+          <p class="eyebrow">Business funnel</p>
+          <h2 id="report-heading">Trial to paid</h2>
+          <p>Provisional local results, scoped to anonymous journeys.</p>
+        </div>
+        <button id="refresh-report" type="button">Refresh dashboard</button>
       </section>
+
+      <output id="report-status" class="sla-status" aria-live="polite">Start the local collector to load a funnel report.</output>
+
+      <section class="dashboard-grid" aria-label="Funnel dashboard">
+        <article class="panel funnel-panel">
+          <h3>Funnel conversion</h3>
+          <ol id="report-stages" class="stage-list" aria-label="Funnel stages"></ol>
+          <p id="report-dropoff" class="dropoff"></p>
+        </article>
+
+        <aside class="insights-column" aria-label="Decision support">
+          <article class="panel insight-card">
+            <p class="eyebrow">Plain-language insight</p>
+            <h3>What to look at next</h3>
+            <p id="report-commentary">Refresh the dashboard to load a local insight.</p>
+          </article>
+
+          <article id="anomaly-card" class="panel anomaly-card" data-status="paused">
+            <p class="eyebrow">Anomaly guardrail</p>
+            <h3 id="anomaly-title">Checks unavailable</h3>
+            <p id="anomaly-detail">Start the local collector to load the dashboard.</p>
+          </article>
+        </aside>
+      </section>
+
+      <p class="privacy-note">Privacy guardrail: this page renders only aggregate counts and collector-provided summaries—never anonymous IDs, URLs with queries, or event payloads.</p>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
