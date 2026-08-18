@@ -14,6 +14,8 @@ The optional `kafka` event-log mode is now implemented with Apache Kafka's Java 
 
 The consumer-side `KafkaEventMaterializer` writes each valid event before it commits its Kafka offset. It dead-letters malformed Kafka records with a safe reason only, then commits past them; a storage failure is left uncommitted for replay. See [`infra/kafka`](../../infra/kafka/README.md) for the optional free local broker profile and the one-poll materializer command.
 
+The collector also contains a deterministic aggregate-only anomaly foundation. It uses a median/MAD baseline, requires seven history points, and suppresses a business finding whenever the data SLA is unhealthy. It never evaluates raw identifiers or customer content.
+
 ## Run locally
 
 ```bash
