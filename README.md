@@ -38,6 +38,14 @@ make demo-check
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173) to see the dashboard. It starts a loopback-only collector and dashboard, stores only synthetic data under ignored `.funnel-proof/demo/`, and never creates a cloud resource. When finished, run `make demo-stop`.
 
+To rebuild the aggregate-only Gold snapshot from that synthetic Silver data, run:
+
+```bash
+FUNNEL_PROOF_GOLD_INPUT_DIR=.funnel-proof/demo/events \
+FUNNEL_PROOF_GOLD_OUTPUT=.funnel-proof/demo/gold/daily-funnel.v1.json \
+make gold-backfill
+```
+
 ## Local verification
 
 Install the free runtimes described in the design's zero-cost execution policy, then run:

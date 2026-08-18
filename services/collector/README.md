@@ -58,3 +58,20 @@ mvn -Dmaven.repo.local=../../.m2 compile exec:java \
 ```
 
 The output reports only processed/written counts and its checkpoint—never raw event payloads.
+
+## Local Gold rebuild
+
+The local data boundary is explicit: the durable accepted-event log is **Bronze**, the privacy-filtered normalized `FileEventStore` is **Silver**, and the Gold rebuild emits a versioned daily aggregate snapshot. Gold contains only UTC event-date and unique anonymous-user counts per funnel stage; it never contains event IDs, anonymous IDs, properties, or raw timestamps.
+
+Rebuild Gold after a replay or a late arrival. The output is written to a temporary file and atomically replaces only the configured Gold target, so readers see either the old complete snapshot or the new complete snapshot:
+
+From the repository root, run:
+
+```bash
+FUNNEL_PROOF_GOLD_INPUT_DIR=.funnel-proof/events \
+FUNNEL_PROOF_GOLD_OUTPUT=.funnel-proof/gold/daily-funnel.v1.json \
+FUNNEL_PROOF_GOLD_WORKSPACE_ID=demo_workspace \
+make gold-backfill
+```
+
+For the first-run demo, use `FUNNEL_PROOF_GOLD_INPUT_DIR=.funnel-proof/demo/events` and choose an output below `.funnel-proof/demo/gold/`.

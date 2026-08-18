@@ -1,4 +1,4 @@
-.PHONY: doctor test verify collector-test demo-start demo-stop demo-data demo-check
+.PHONY: doctor test verify collector-test demo-start demo-stop demo-data demo-check gold-backfill
 
 SCENARIO ?= healthy
 
@@ -29,3 +29,6 @@ demo-data:
 
 demo-check:
 	node scripts/demo-check.mjs
+
+gold-backfill:
+	mvn -f services/collector/pom.xml -Dmaven.repo.local=.m2 compile exec:java -Dexec.mainClass=dev.funnelproof.collector.LocalGoldBackfillApplication
