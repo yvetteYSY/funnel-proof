@@ -1,4 +1,6 @@
-.PHONY: doctor test verify collector-test
+.PHONY: doctor test verify collector-test demo-data
+
+SCENARIO ?= healthy
 
 doctor:
 	@command -v node >/dev/null && node --version || echo "Missing: Node.js 22+"
@@ -15,3 +17,6 @@ verify:
 
 collector-test:
 	cd services/collector && mvn -Dmaven.repo.local=../../.m2 test
+
+demo-data:
+	node scripts/seed-demo-data.mjs $(SCENARIO)

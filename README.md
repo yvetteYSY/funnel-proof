@@ -24,6 +24,8 @@ The demo app now includes a small business-owner dashboard: aggregate stage conv
 
 The screenshot is generated from synthetic local events only: 10 page views, 5 signups, 4 activations, and 1 subscription. It is illustrative, not a customer metric or a production benchmark.
 
+Seed a repeatable, privacy-safe dashboard scenario with `make demo-data`. The available scenarios include healthy conversion, signup drop-off, payment drop-off, late arrivals ordered by event time, and stable-event retry/deduplication. Details are in the [demo guide](apps/demo-saas/README.md#repeatable-synthetic-scenarios).
+
 ## Local verification
 
 Install the free runtimes described in the design's zero-cost execution policy, then run:
