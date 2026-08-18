@@ -46,4 +46,21 @@ describe("local funnel report presentation", () => {
     expect(anomalySummary(healthyReport)).toMatchObject({ status: "baseline_pending", title: "Baseline pending" });
     expect(anomalySummary({ ...healthyReport, data_sla: { status: "stale" } })).toMatchObject({ status: "paused", title: "Checks paused" });
   });
+
+  it("renders a detector result without exposing raw event data", () => {
+    const report: FunnelReport = {
+      ...healthyReport,
+      anomaly: {
+        metric: "daily_subscription_started_users",
+        status: "anomaly",
+        current_value: 1,
+        baseline_points: 7,
+        baseline_median: 5.5,
+        robust_z_score: -6.07
+      }
+    };
+
+    expect(anomalySummary(report)).toMatchObject({ status: "anomaly", title: "Change detected" });
+    expect(anomalySummary(report).detail).toContain("1 subscriptions");
+  });
 });

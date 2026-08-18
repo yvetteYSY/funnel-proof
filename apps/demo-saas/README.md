@@ -27,6 +27,7 @@ make demo-data SCENARIO=signup-dropoff
 make demo-data SCENARIO=payment-dropoff
 make demo-data SCENARIO=late-arrivals  # delivered out of order; funnel still uses occurred_at
 make demo-data SCENARIO=retries        # resends one stable event_id to demonstrate dedupe
+make demo-data SCENARIO=subscription-anomaly  # eight daily aggregates; latest subscription count is anomalous
 ```
 
 The supported scenarios emit only allowlisted, synthetic properties. Each scenario uses stable synthetic event IDs, so rerunning the same scenario is idempotent: the collector reports duplicates rather than inflating the funnel. Use a new local collector data directory when you want an empty dashboard.

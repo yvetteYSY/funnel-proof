@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 
-const SCENARIOS = new Set(["healthy", "signup-dropoff", "payment-dropoff", "late-arrivals", "retries"]);
+const SCENARIOS = new Set(["healthy", "signup-dropoff", "payment-dropoff", "late-arrivals", "retries", "subscription-anomaly"]);
 const STAGES = ["vpv", "signup_completed", "activation_completed", "subscription_started"];
 
 export function supportedScenarios() {
@@ -9,6 +9,7 @@ export function supportedScenarios() {
 
 export function buildScenarioEvents(scenario, now = new Date()) {
   if (!SCENARIOS.has(scenario)) throw new Error(`Unknown scenario: ${scenario}. Choose one of: ${supportedScenarios().join(", ")}`);
+  if (scenario === "subscription-anomaly") return subscriptionAnomalyEvents(now);
 
   const baseTime = new Date(now.getTime() - 30 * 60 * 1000);
   const plan = scenarioPlan(scenario);
@@ -32,6 +33,22 @@ export function buildScenarioEvents(scenario, now = new Date()) {
   if (scenario === "retries") {
     // A browser retry resends exactly the same stable event_id; it must not create a second user.
     return [...events, events[0]];
+  }
+  return events;
+}
+
+function subscriptionAnomalyEvents(now) {
+  // Seven historical observed days vary narrowly around 6–8 subscriptions. The latest event-time
+  // day has one subscription, which should cross the robust MAD threshold without any raw data.
+  const subscriptionsByDay = [6, 7, 8, 7, 8, 6, 8, 1];
+  const firstDay = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
+  const events = [];
+  for (const [day, subscriptions] of subscriptionsByDay.entries()) {
+    const dayStart = new Date(firstDay.getTime() + day * 24 * 60 * 60 * 1000);
+    for (let user = 1; user <= subscriptions; user += 1) {
+      const identity = `day${String(day + 1).padStart(2, "0")}_user${String(user).padStart(3, "0")}`;
+      for (const eventName of STAGES) events.push(seedEvent("subscription-anomaly", identity, eventName, dayStart));
+    }
   }
   return events;
 }

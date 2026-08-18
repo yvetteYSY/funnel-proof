@@ -6,11 +6,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Deterministic, local-only funnel calculation over accepted events. A report is explicitly
@@ -38,6 +43,8 @@ public final class FunnelReportService {
             dataSla.put("latest_received_at", freshness.latestReceivedAt().toString());
             dataSla.put("age_seconds", freshness.ageSeconds());
         }
+
+        addSubscriptionAnomaly(report, events, freshness);
 
         int[] counts = stageCounts(events);
         ArrayNode stages = report.putArray("stages");
@@ -71,6 +78,59 @@ public final class FunnelReportService {
             ));
         }
         return report;
+    }
+
+    /**
+     * Evaluates only daily aggregate subscription counts. Event-time buckets are intentionally
+     * recomputed on every request so a late accepted event corrects its historical day without
+     * exposing the underlying anonymous journeys.
+     */
+    private static void addSubscriptionAnomaly(ObjectNode report, List<ObjectNode> events, Freshness freshness) {
+        TreeMap<LocalDate, Set<String>> subscriptionsByDay = new TreeMap<>();
+        Set<LocalDate> observedDays = new HashSet<>();
+        LocalDate latestEventDay = null;
+
+        for (ObjectNode event : events) {
+            try {
+                LocalDate eventDay = Instant.parse(event.path("occurred_at").asText()).atZone(ZoneOffset.UTC).toLocalDate();
+                observedDays.add(eventDay);
+                if (latestEventDay == null || eventDay.isAfter(latestEventDay)) latestEventDay = eventDay;
+                if ("subscription_started".equals(event.path("event_name").asText())) {
+                    String anonymousId = event.path("anonymous_id").asText();
+                    if (!anonymousId.isBlank()) {
+                        subscriptionsByDay.computeIfAbsent(eventDay, ignored -> new HashSet<>()).add(anonymousId);
+                    }
+                }
+            } catch (Exception ignored) {
+                // A malformed persisted record cannot create an anomaly finding or an observed day.
+            }
+        }
+
+        List<Double> baseline = new ArrayList<>();
+        double currentValue = 0;
+        String asOfEventDate = null;
+        if (latestEventDay != null) {
+            LocalDate currentEventDay = latestEventDay;
+            asOfEventDate = currentEventDay.toString();
+            currentValue = subscriptionsByDay.getOrDefault(currentEventDay, Set.of()).size();
+            for (LocalDate observedDay : observedDays.stream().filter(day -> day.isBefore(currentEventDay)).sorted().toList()) {
+                baseline.add((double) subscriptionsByDay.getOrDefault(observedDay, Set.of()).size());
+            }
+            if (baseline.size() > 7) baseline = new ArrayList<>(baseline.subList(baseline.size() - 7, baseline.size()));
+        }
+
+        var result = new RobustAnomalyDetector().detect(
+                "daily_subscription_started_users", baseline, currentValue, "healthy".equals(freshness.status())
+        );
+        ObjectNode anomaly = report.putObject("anomaly");
+        anomaly.put("metric", result.metric());
+        anomaly.put("status", result.status());
+        anomaly.put("current_value", currentValue);
+        anomaly.put("baseline_points", baseline.size());
+        if (asOfEventDate != null) anomaly.put("as_of_event_date", asOfEventDate);
+        if (result.baselineMedian() != null) anomaly.put("baseline_median", result.baselineMedian());
+        if (result.baselineMad() != null) anomaly.put("baseline_mad", result.baselineMad());
+        if (result.robustZScore() != null) anomaly.put("robust_z_score", result.robustZScore());
     }
 
     private static int[] stageCounts(List<ObjectNode> events) {

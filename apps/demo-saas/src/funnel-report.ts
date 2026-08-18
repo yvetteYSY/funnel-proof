@@ -16,6 +16,14 @@ export interface FunnelReport {
     status: string;
     summary: string;
   };
+  anomaly?: {
+    metric: string;
+    status: "anomaly" | "normal" | "insufficient_history" | "insufficient_variation" | "suppressed_data_sla_unhealthy";
+    current_value: number;
+    baseline_points: number;
+    baseline_median?: number;
+    robust_z_score?: number;
+  };
 }
 
 const stageLabels: Readonly<Record<string, string>> = {
@@ -72,26 +80,55 @@ export function largestDropoff(report: FunnelReport): string {
 }
 
 export interface AnomalySummary {
-  status: "paused" | "baseline_pending";
+  status: "paused" | "baseline_pending" | "normal" | "anomaly";
   title: string;
   detail: string;
 }
 
-/**
- * The local report does not yet expose a time-series anomaly result. This presentation keeps that
- * limitation visible rather than fabricating a business finding from raw or insufficient data.
- */
 export function anomalySummary(report: FunnelReport): AnomalySummary {
-  if (report.data_sla.status !== "healthy") {
+  const anomaly = report.anomaly;
+  if (anomaly?.status === "suppressed_data_sla_unhealthy" || report.data_sla.status !== "healthy") {
     return {
       status: "paused",
       title: "Checks paused",
       detail: "Anomaly findings stay suppressed until the data freshness objective is healthy."
     };
   }
+  if (!anomaly) {
+    return {
+      status: "baseline_pending",
+      title: "Baseline pending",
+      detail: "The privacy-safe detector needs 7 prior daily aggregate observations before it can evaluate a funnel change."
+    };
+  }
+  if (anomaly.status === "anomaly") {
+    return {
+      status: "anomaly",
+      title: "Change detected",
+      detail: `Today's ${formatNumber(anomaly.current_value)} subscriptions differs from the ${formatNumber(anomaly.baseline_median ?? 0)}-subscription baseline. Review the funnel before acting.`
+    };
+  }
+  if (anomaly.status === "normal") {
+    return {
+      status: "normal",
+      title: "Within expected range",
+      detail: `Today's ${formatNumber(anomaly.current_value)} subscriptions is within the recent aggregate baseline.`
+    };
+  }
+  if (anomaly.status === "insufficient_variation") {
+    return {
+      status: "baseline_pending",
+      title: "Baseline too uniform",
+      detail: "The detector needs natural variation in daily aggregate counts before it can distinguish a meaningful change."
+    };
+  }
   return {
     status: "baseline_pending",
     title: "Baseline pending",
-    detail: "The privacy-safe detector needs at least 7 daily aggregate observations before it can evaluate a funnel change."
+    detail: `The privacy-safe detector needs 7 prior daily aggregate observations; ${anomaly.baseline_points} are available.`
   };
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
 }

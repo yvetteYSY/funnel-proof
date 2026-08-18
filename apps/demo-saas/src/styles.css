@@ -58,6 +58,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #99d7b8; outline-
 .insight-card { background: #fcfbf1; border-color: #e9e4c4; }
 .anomaly-card[data-status="paused"] { background: #fbf5f2; border-color: #ecd8cd; }
 .anomaly-card[data-status="baseline_pending"] { background: #f1f7f1; border-color: #d3e4d4; }
+.anomaly-card[data-status="normal"] { background: #f1f7f1; border-color: #d3e4d4; }
+.anomaly-card[data-status="anomaly"] { background: #fff3ed; border-color: #efc7b5; }
 
 .privacy-note { max-width: 760px; margin: 28px 0 0; font-size: 0.84rem; }
 

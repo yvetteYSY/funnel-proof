@@ -36,6 +36,13 @@ describe("synthetic dashboard scenarios", () => {
   });
 
   it("lists the documented scenario names", () => {
-    expect(supportedScenarios()).toEqual(["healthy", "signup-dropoff", "payment-dropoff", "late-arrivals", "retries"]);
+    expect(supportedScenarios()).toEqual(["healthy", "signup-dropoff", "payment-dropoff", "late-arrivals", "retries", "subscription-anomaly"]);
+  });
+
+  it("creates seven prior event-time days for the subscription anomaly demonstration", () => {
+    const events = buildScenarioEvents("subscription-anomaly", new Date("2026-01-09T12:00:00Z"));
+    const subscriptionDays = new Set(events.filter(({ event }) => event.event_name === "subscription_started").map(({ event }) => event.occurred_at.slice(0, 10)));
+    expect(subscriptionDays.size).toBe(8);
+    expect(events.filter(({ event }) => event.event_name === "subscription_started")).toHaveLength(51);
   });
 });

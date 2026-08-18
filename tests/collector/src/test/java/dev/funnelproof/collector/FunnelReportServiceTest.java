@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,15 +47,42 @@ class FunnelReportServiceTest {
 
         assertEquals("stale", report.path("data_sla").path("status").asText());
         assertEquals("suppressed_data_sla_unhealthy", report.path("commentary").path("status").asText());
+        assertEquals("suppressed_data_sla_unhealthy", report.path("anomaly").path("status").asText());
+    }
+
+    @Test
+    void detectsAnEventTimeSubscriptionAnomalyFromSevenPriorAggregateDays() {
+        List<ObjectNode> events = new ArrayList<>();
+        Instant latestReceivedAt = GENERATED_AT.minusSeconds(30);
+        int[] baselineSubscriptions = {6, 7, 8, 7, 8, 6, 8};
+        for (int day = 0; day < baselineSubscriptions.length; day++) {
+            Instant occurredAt = GENERATED_AT.minus(8L - day, ChronoUnit.DAYS);
+            for (int user = 0; user < baselineSubscriptions[day]; user++) {
+                events.add(event("baseline-" + day + "-user-" + user + "-identifier", "subscription_started", occurredAt.toString(), latestReceivedAt.toString()));
+            }
+        }
+        events.add(event("current-user-identifier-0001", "subscription_started", GENERATED_AT.minus(1, ChronoUnit.DAYS).toString(), latestReceivedAt.toString()));
+
+        ObjectNode report = new FunnelReportService().buildReport(events, GENERATED_AT);
+
+        assertEquals("anomaly", report.path("anomaly").path("status").asText());
+        assertEquals("daily_subscription_started_users", report.path("anomaly").path("metric").asText());
+        assertEquals(7, report.path("anomaly").path("baseline_points").asInt());
+        assertEquals(1.0, report.path("anomaly").path("current_value").asDouble());
+        assertEquals(false, report.path("anomaly").has("anonymous_id"));
     }
 
     private static ObjectNode event(String anonymousId, String eventName, String occurredAt) {
+        return event(anonymousId, eventName, occurredAt, occurredAt);
+    }
+
+    private static ObjectNode event(String anonymousId, String eventName, String occurredAt, String receivedAt) {
         ObjectNode event = MAPPER.createObjectNode();
         event.put("event_id", anonymousId + eventName);
         event.put("anonymous_id", anonymousId);
         event.put("event_name", eventName);
         event.put("occurred_at", occurredAt);
-        event.put("received_at", occurredAt);
+        event.put("received_at", receivedAt);
         return event;
     }
 }
