@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover - resolved by the installed Airflow vers
     from airflow.decorators import dag, task
     from airflow.operators.python import get_current_context
 
-from canonical_rebuild_config import default_config
+from canonical_rebuild_config import default_clickhouse_publisher_config, default_config
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -29,15 +29,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 )
 def canonical_hourly():
     @task
-    def rebuild_current_event_date() -> None:
+    def rebuild_current_event_date() -> str:
         context = get_current_context()
         interval_end = context["data_interval_end"]
         event_date = interval_end.date()
         snapshot_version = f"airflow-{context['run_id']}"
         command = default_config(PROJECT_ROOT).command(event_date, event_date, snapshot_version)
         subprocess.run(command, check=True)
+        return snapshot_version
 
-    rebuild_current_event_date()
+    @task
+    def publish_serving_snapshot(snapshot_version: str) -> None:
+        event_date = get_current_context()["data_interval_end"].date()
+        subprocess.run(default_clickhouse_publisher_config(PROJECT_ROOT).command(event_date, snapshot_version), check=True)
+
+    publish_serving_snapshot(rebuild_current_event_date())
 
 
 canonical_hourly()

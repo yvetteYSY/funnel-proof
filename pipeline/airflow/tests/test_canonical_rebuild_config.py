@@ -1,7 +1,7 @@
 from datetime import date
 import unittest
 
-from dags.canonical_rebuild_config import CanonicalRebuildConfig
+from dags.canonical_rebuild_config import CanonicalRebuildConfig, ClickHousePublisherConfig
 
 
 class CanonicalRebuildConfigTest(unittest.TestCase):
@@ -25,6 +25,11 @@ class CanonicalRebuildConfigTest(unittest.TestCase):
         config = CanonicalRebuildConfig("spark-submit", "/jobs/canonical.jar", "bronze", "silver", "gold")
         with self.assertRaises(ValueError):
             config.command(date(2026, 8, 19), date(2026, 8, 18), "invalid")
+
+    def test_publisher_passes_only_password_environment_variable(self) -> None:
+        command = ClickHousePublisherConfig("spark-submit", "/job.jar", "gold", "jdbc:clickhouse://localhost", "default").command(date(2026, 8, 18), "run")
+        self.assertIn("--clickhouse-password-env", command)
+        self.assertIn("FUNNEL_PROOF_CLICKHOUSE_PASSWORD", command)
 
 
 if __name__ == "__main__":

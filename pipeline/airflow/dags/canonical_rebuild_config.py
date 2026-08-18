@@ -51,3 +51,31 @@ def default_config(project_root: Path) -> CanonicalRebuildConfig:
         gold_table=os.environ.get("FUNNEL_PROOF_ICEBERG_GOLD_TABLE", "lake.funnelproof.gold_funnel_daily_v1"),
         lookback_days=int(os.environ.get("FUNNEL_PROOF_FUNNEL_LOOKBACK_DAYS", "30")),
     )
+
+
+@dataclass(frozen=True)
+class ClickHousePublisherConfig:
+    spark_submit: str
+    job_jar: str
+    gold_table: str
+    jdbc_url: str
+    user: str
+    password_environment_variable: str = "FUNNEL_PROOF_CLICKHOUSE_PASSWORD"
+
+    def command(self, event_date: date, snapshot_version: str) -> list[str]:
+        return [self.spark_submit, "--class", "dev.funnelproof.pipeline.spark.ClickHousePublisherJob",
+                "--packages", "com.clickhouse:clickhouse-jdbc:0.9.2:all", self.job_jar,
+                "--gold-table", self.gold_table, "--clickhouse-jdbc-url", self.jdbc_url,
+                "--clickhouse-user", self.user, "--clickhouse-password-env", self.password_environment_variable,
+                "--event-date", event_date.isoformat(), "--snapshot-version", snapshot_version]
+
+
+def default_clickhouse_publisher_config(project_root: Path) -> ClickHousePublisherConfig:
+    import os
+    return ClickHousePublisherConfig(
+        spark_submit=os.environ.get("FUNNEL_PROOF_SPARK_SUBMIT", "spark-submit"),
+        job_jar=os.environ.get("FUNNEL_PROOF_SPARK_JOB_JAR", str(project_root / "pipeline/spark/target/spark-canonical-rebuild-0.1.0-SNAPSHOT.jar")),
+        gold_table=os.environ.get("FUNNEL_PROOF_ICEBERG_GOLD_TABLE", "lake.funnelproof.gold_funnel_daily_v1"),
+        jdbc_url=os.environ.get("FUNNEL_PROOF_CLICKHOUSE_JDBC_URL", "jdbc:clickhouse://127.0.0.1:8123/default"),
+        user=os.environ.get("FUNNEL_PROOF_CLICKHOUSE_USER", "default"),
+    )
