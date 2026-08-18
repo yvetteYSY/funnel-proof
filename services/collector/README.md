@@ -12,7 +12,9 @@ This phase does not create cloud resources or run a Kafka broker. The future Kaf
 
 The optional `kafka` event-log mode is now implemented with Apache Kafka's Java client. It uses `acks=all`, idempotent production, and bounded acknowledgement waiting. It is still not a blanket “exactly once” claim: browser retries and downstream replays are handled by the stable `event_id`, the materializer's idempotent writes, and future stream-layer dedupe.
 
-The consumer-side `KafkaEventMaterializer` writes each valid event before it commits its Kafka offset. It dead-letters malformed Kafka records with a safe reason only, then commits past them; a storage failure is left uncommitted for replay. The runnable consumer process is the next operational slice. See [`infra/kafka`](../../infra/kafka/README.md) for the optional free local broker profile.
+The consumer-side `KafkaEventMaterializer` writes each valid event before it commits its Kafka offset. It dead-letters malformed Kafka records with a safe reason only, then commits past them; a storage failure is left uncommitted for replay. The local runner performs a bounded two-poll drain by default because a new consumer's first poll can establish partition assignment without returning records. See [`infra/kafka`](../../infra/kafka/README.md) for the optional free local broker profile.
+
+The collector also contains a deterministic aggregate-only anomaly foundation. It uses a median/MAD baseline, requires seven history points, and suppresses a business finding whenever the data SLA is unhealthy. It never evaluates raw identifiers or customer content.
 
 ## Run locally
 
