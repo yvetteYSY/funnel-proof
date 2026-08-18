@@ -34,3 +34,5 @@ Before running a future runtime command, make sure Colima (or another local cont
 ## Implemented streaming stage
 
 The first distributed stage is now in [`flink/`](flink/): Kafka accepted envelopes flow into Iceberg Bronze through checkpointed, workspace-scoped event-ID deduplication. The canonical batch stage is in [`spark/`](spark/): Scala/Spark rebuilds a named date range into Silver and Gold, correcting late events and safe replays. Both are build-tested locally, but neither is presented as an already-running cluster; the next integration step is a synthetic local Kafka + MinIO + Flink + Spark run.
+
+[`airflow/`](airflow/) schedules the canonical rebuild hourly with retry-safe, partition-idempotent commands. It orchestrates Spark; it does not process or store customer events itself.

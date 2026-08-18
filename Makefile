@@ -1,4 +1,4 @@
-.PHONY: doctor test verify collector-test flink-test flink-package spark-test demo-start demo-stop demo-data demo-check gold-backfill
+.PHONY: doctor test verify collector-test flink-test flink-package spark-test airflow-test demo-start demo-stop demo-data demo-check gold-backfill
 
 SCENARIO ?= healthy
 
@@ -16,6 +16,7 @@ verify:
 	cd services/collector && mvn -Dmaven.repo.local=../../.m2 test
 	mvn -f pipeline/flink/pom.xml -Dmaven.repo.local=.m2 test
 	mvn -f pipeline/spark/pom.xml -Dmaven.repo.local=.m2 test
+	PYTHONPATH=pipeline/airflow python3 -m unittest discover -s pipeline/airflow/tests
 
 collector-test:
 	cd services/collector && mvn -Dmaven.repo.local=../../.m2 test
@@ -28,6 +29,9 @@ flink-package:
 
 spark-test:
 	mvn -f pipeline/spark/pom.xml -Dmaven.repo.local=.m2 test
+
+airflow-test:
+	PYTHONPATH=pipeline/airflow python3 -m unittest discover -s pipeline/airflow/tests
 
 demo-start:
 	bash scripts/demo-start.sh
