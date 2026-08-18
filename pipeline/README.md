@@ -30,3 +30,7 @@ The ClickHouse schema in [`clickhouse/`](clickhouse/) deliberately has no event 
 The runtime manifest is an optional distributed-learning profile. It is not part of `make verify`, the dashboard first run, or any paid deployment. It binds services to loopback addresses and must be run only with synthetic data.
 
 Before running a future runtime command, make sure Colima (or another local container runtime) is active. Stop the profile after use to release local CPU, memory, and disk.
+
+## Implemented streaming stage
+
+The first distributed stage is now in [`flink/`](flink/): Kafka accepted envelopes flow into Iceberg Bronze through checkpointed, workspace-scoped event-ID deduplication. Its operational contract, build command, environment variables, and Flink submission command are documented in that folder. It is build-tested locally, but it is not presented as an already-running cluster; the next integration step is a synthetic local Kafka + MinIO + Flink run.

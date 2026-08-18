@@ -1,4 +1,4 @@
-.PHONY: doctor test verify collector-test demo-start demo-stop demo-data demo-check gold-backfill
+.PHONY: doctor test verify collector-test flink-test flink-package demo-start demo-stop demo-data demo-check gold-backfill
 
 SCENARIO ?= healthy
 
@@ -14,9 +14,16 @@ test:
 verify:
 	npm run verify
 	cd services/collector && mvn -Dmaven.repo.local=../../.m2 test
+	mvn -f pipeline/flink/pom.xml -Dmaven.repo.local=.m2 test
 
 collector-test:
 	cd services/collector && mvn -Dmaven.repo.local=../../.m2 test
+
+flink-test:
+	mvn -f pipeline/flink/pom.xml -Dmaven.repo.local=.m2 test
+
+flink-package:
+	mvn -f pipeline/flink/pom.xml -Dmaven.repo.local=.m2 package
 
 demo-start:
 	bash scripts/demo-start.sh
